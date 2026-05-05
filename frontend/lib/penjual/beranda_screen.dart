@@ -8,11 +8,13 @@ import 'produk_screen.dart';
 class BerandaScreen extends StatefulWidget {
   final String userName;
   final String userEmail;
+  final bool isLoggedIn;
 
   const BerandaScreen({
     super.key,
     required this.userName,
     required this.userEmail,
+    this.isLoggedIn = false,
   });
 
   @override
@@ -111,7 +113,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
   // ==================== WIDGET GAMBAR PRODUK ====================
   Widget _buildProductImage(Map<String, dynamic> product) {
     final String? imageAsset = product['imageAsset'];
-    
+
     if (imageAsset != null && imageAsset.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -130,7 +132,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
         ),
       );
     }
-    
+
     return Icon(
       product['imageIcon'],
       color: const Color(0xFF803033).withOpacity(0.5),
@@ -208,10 +210,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF5ECEA),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFF5ECEA),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFFF5ECEA), width: 1),
               ),
               child: Text(
                 '#${product['rank']}',
@@ -249,8 +248,16 @@ class _BerandaScreenState extends State<BerandaScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildNavItem(icon: Icons.home_outlined, label: 'Beranda', index: 0),
-          _buildNavItem(icon: Icons.inventory_2_outlined, label: 'Produk', index: 1),
-          _buildNavItem(icon: Icons.bar_chart_outlined, label: 'Laporan', index: 2),
+          _buildNavItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Produk',
+            index: 1,
+          ),
+          _buildNavItem(
+            icon: Icons.bar_chart_outlined,
+            label: 'Laporan',
+            index: 2,
+          ),
         ],
       ),
     );
@@ -271,12 +278,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
-          border: isSelected ? Border.all(color: Colors.grey.shade200, width: 1) : null,
+          border: isSelected
+              ? Border.all(color: Colors.grey.shade200, width: 1)
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: const Color(0xFF803033).withOpacity(opacity), size: 18),
+            Icon(
+              icon,
+              color: const Color(0xFF803033).withOpacity(opacity),
+              size: 18,
+            ),
             const SizedBox(width: 4),
             Text(
               label,
@@ -339,8 +352,13 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                        icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+                        onPressed: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -380,7 +398,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFFFE0B2), width: 2),
+                      border: Border.all(
+                        color: const Color(0xFFFFE0B2),
+                        width: 2,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -396,7 +417,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF3E0),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFFFE0B2), width: 2),
+                            border: Border.all(
+                              color: const Color(0xFFFFE0B2),
+                              width: 2,
+                            ),
                           ),
                           child: const Icon(
                             Icons.warning_amber_rounded,
@@ -433,7 +457,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
                           style: TextButton.styleFrom(
                             foregroundColor: const Color(0xFF803033),
                           ),
-                          child: const Text('Lihat', style: TextStyle(fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            'Lihat',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ],
                     ),
@@ -506,20 +533,32 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                 },
                               ),
                               titlesData: FlTitlesData(
-                                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                leftTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                rightTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                topTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
                                 bottomTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
                                     interval: 1,
                                     getTitlesWidget: (value, meta) {
-                                      if (value.toInt() >= 0 && value.toInt() < _weeklySales.length) {
+                                      if (value.toInt() >= 0 &&
+                                          value.toInt() < _weeklySales.length) {
                                         return Padding(
-                                          padding: const EdgeInsets.only(top: 8),
+                                          padding: const EdgeInsets.only(
+                                            top: 8,
+                                          ),
                                           child: Text(
                                             _weeklySales[value.toInt()]['day'],
-                                            style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade500),
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade500,
+                                            ),
                                           ),
                                         );
                                       }
@@ -531,8 +570,13 @@ class _BerandaScreenState extends State<BerandaScreen> {
                               borderData: FlBorderData(show: false),
                               lineBarsData: [
                                 LineChartBarData(
-                                  spots: _weeklySales.asMap().entries.map((entry) {
-                                    return FlSpot(entry.key.toDouble(), entry.value['value']);
+                                  spots: _weeklySales.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    return FlSpot(
+                                      entry.key.toDouble(),
+                                      entry.value['value'],
+                                    );
                                   }).toList(),
                                   isCurved: true,
                                   color: const Color(0xFF803033),
@@ -540,14 +584,17 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                   isStrokeCapRound: true,
                                   dotData: FlDotData(
                                     show: true,
-                                    getDotPainter: (spot, percent, barData, index) {
-                                      return FlDotCirclePainter(
-                                        radius: 4,
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                        strokeColor: const Color(0xFF803033),
-                                      );
-                                    },
+                                    getDotPainter:
+                                        (spot, percent, barData, index) {
+                                          return FlDotCirclePainter(
+                                            radius: 4,
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                            strokeColor: const Color(
+                                              0xFF803033,
+                                            ),
+                                          );
+                                        },
                                   ),
                                   belowBarData: BarAreaData(show: false),
                                 ),
@@ -576,7 +623,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
                         onTap: _navigateToProduk,
                         child: Row(
                           children: [
-                            const Icon(Icons.star, color: Color(0xFF803033), size: 16),
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFF803033),
+                              size: 16,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Lihat semua',

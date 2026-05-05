@@ -24,10 +24,17 @@ class _ProdukScreenState extends State<ProdukScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 1;
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Filter kategori
   String _selectedCategory = 'Semua';
-  final List<String> _categories = ['Semua', 'Abaya', 'Gamis', 'Baju Kurung', 'Khimar', 'Bergo'];
+  final List<String> _categories = [
+    'Semua',
+    'Abaya',
+    'Gamis',
+    'Baju Kurung',
+    'Khimar',
+    'Bergo',
+  ];
 
   // Data produk dengan gambar
   final List<Map<String, dynamic>> _products = [
@@ -133,17 +140,17 @@ class _ProdukScreenState extends State<ProdukScreen> {
     );
   }
 
-void _navigateToTambahProduk() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => TambahProdukScreen(
-        userName: widget.userName,
-        userEmail: widget.userEmail,
+  void _navigateToTambahProduk() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TambahProdukScreen(
+          userName: widget.userName,
+          userEmail: widget.userEmail,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _onMenuItemSelected(int index) {
     Navigator.pop(context);
@@ -177,10 +184,12 @@ void _navigateToTambahProduk() {
         _filteredProducts = _products;
       } else {
         _filteredProducts = _products.where((product) {
-          final matchesSearch = query.isEmpty ||
+          final matchesSearch =
+              query.isEmpty ||
               product['name'].toLowerCase().contains(query.toLowerCase()) ||
               product['category'].toLowerCase().contains(query.toLowerCase());
-          final matchesCategory = _selectedCategory == 'Semua' ||
+          final matchesCategory =
+              _selectedCategory == 'Semua' ||
               product['category'] == _selectedCategory;
           return matchesSearch && matchesCategory;
         }).toList();
@@ -232,8 +241,12 @@ void _navigateToTambahProduk() {
                     backgroundColor: Colors.grey.shade100,
                     selectedColor: const Color(0xFF803033).withOpacity(0.2),
                     labelStyle: GoogleFonts.plusJakartaSans(
-                      color: isSelected ? const Color(0xFF803033) : Colors.grey.shade700,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFF803033)
+                          : Colors.grey.shade700,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                     ),
                     side: BorderSide.none,
                     shape: RoundedRectangleBorder(
@@ -255,155 +268,155 @@ void _navigateToTambahProduk() {
   }
 
   void _editProduct(Map<String, dynamic> product) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => EditProdukScreen(
-        userName: widget.userName,
-        userEmail: widget.userEmail,
-        produk: product,
-      ),
-    ),
-  );
-}
-
-
-void _deleteProduct(Map<String, dynamic> product) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.85, // Lebar dialog
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProdukScreen(
+          userName: widget.userName,
+          userEmail: widget.userEmail,
+          produk: product,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Icon Hapus / Peringatan
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5ECEA),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.delete_outline,
-                color: Color(0xFF803033),
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Judul
-            Text(
-              'Hapus Produk?',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF803033),
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            // Pesan
-            Text(
-              'Apakah Anda yakin ingin menghapus produk ${product['name']}?',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: Colors.grey.shade700,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 28),
-            
-            // Tombol Batal dan Ya, Hapus
-            Row(
-              children: [
-                // Tombol Batal
-                Expanded(
-                  child: SizedBox(
-                    height: 48, // Tinggi
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF803033),
-                        side: const BorderSide(color: Color(0xFFD8A5A8), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 0),
-                      ),
-                      child: Text(
-                        'Batal',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
+      ),
+    );
+  }
+
+  void _deleteProduct(Map<String, dynamic> product) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85, // Lebar dialog
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon Hapus / Peringatan
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5ECEA),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                
-                // Tombol Ya, Hapus
-                Expanded(
-                  child: SizedBox(
-                    height: 48, // Tinggi
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _products.remove(product);
-                          _filterProducts(_searchController.text);
-                        });
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${product['name']} telah dihapus'),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFF803033),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Judul
+              Text(
+                'Hapus Produk?',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF803033),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Pesan
+              Text(
+                'Apakah Anda yakin ingin menghapus produk ${product['name']}?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Tombol Batal dan Ya, Hapus
+              Row(
+                children: [
+                  // Tombol Batal
+                  Expanded(
+                    child: SizedBox(
+                      height: 48, // Tinggi
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF803033),
+                          side: const BorderSide(
+                            color: Color(0xFFD8A5A8),
+                            width: 1.5,
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF803033),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 0),
                         ),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 0),
-                      ),
-                      child: Text(
-                        'Ya, Hapus',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        child: Text(
+                          'Batal',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+
+                  // Tombol Ya, Hapus
+                  Expanded(
+                    child: SizedBox(
+                      height: 48, // Tinggi
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _products.remove(product);
+                            _filterProducts(_searchController.text);
+                          });
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${product['name']} telah dihapus'),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF803033),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 0),
+                        ),
+                        child: Text(
+                          'Ya, Hapus',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -451,12 +464,20 @@ void _deleteProduct(Map<String, dynamic> product) {
               children: [
                 // Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                        icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+                        onPressed: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -501,7 +522,7 @@ void _deleteProduct(Map<String, dynamic> product) {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Search Bar & Filter Button
                       Row(
                         children: [
@@ -510,7 +531,10 @@ void _deleteProduct(Map<String, dynamic> product) {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF5ECEA),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white, width: 1),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1,
+                                ),
                               ),
                               child: TextField(
                                 controller: _searchController,
@@ -561,7 +585,10 @@ void _deleteProduct(Map<String, dynamic> product) {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF5ECEA),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white, width: 1),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1,
+                                ),
                               ),
                               child: Icon(
                                 Icons.filter_list,
@@ -610,15 +637,19 @@ void _deleteProduct(Map<String, dynamic> product) {
                             if (constraints.maxWidth > 1100) {
                               crossAxisCount = 4;
                             }
-                            
+
                             return GridView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: 0.65,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
                               ),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio: 0.65,
+                                  ),
                               itemCount: _filteredProducts.length,
                               itemBuilder: (context, index) {
                                 final product = _filteredProducts[index];
@@ -646,54 +677,51 @@ void _deleteProduct(Map<String, dynamic> product) {
   }
 
   Widget _buildProductImage(Map<String, dynamic> product) {
-  final String? imageAsset = product['imageAsset'];
+    final String? imageAsset = product['imageAsset'];
 
-  return ClipRRect(
-    borderRadius: const BorderRadius.only(
-      topLeft: Radius.circular(15),
-      topRight: Radius.circular(15),
-    ),
-    child: imageAsset != null && imageAsset.isNotEmpty
-        ? Image.asset(
-            imageAsset,
-            width: double.infinity,
-            height: 120,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: 120,
-                width: double.infinity,
-                color: const Color(0xFFF5ECEA),
-                child: Icon(
-                  product['imageIcon'],
-                  color: const Color(0xFF803033).withOpacity(0.4),
-                  size: 50,
-                ),
-              );
-            },
-          )
-        : Container(
-            height: 120,
-            width: double.infinity,
-            color: const Color(0xFFF5ECEA),
-            child: Icon(
-              product['imageIcon'],
-              color: const Color(0xFF803033).withOpacity(0.4),
-              size: 50,
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(15),
+        topRight: Radius.circular(15),
+      ),
+      child: imageAsset != null && imageAsset.isNotEmpty
+          ? Image.asset(
+              imageAsset,
+              width: double.infinity,
+              height: 120,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 120,
+                  width: double.infinity,
+                  color: const Color(0xFFF5ECEA),
+                  child: Icon(
+                    product['imageIcon'],
+                    color: const Color(0xFF803033).withOpacity(0.4),
+                    size: 50,
+                  ),
+                );
+              },
+            )
+          : Container(
+              height: 120,
+              width: double.infinity,
+              color: const Color(0xFFF5ECEA),
+              child: Icon(
+                product['imageIcon'],
+                color: const Color(0xFF803033).withOpacity(0.4),
+                size: 50,
+              ),
             ),
-          ),
-  );
-}
+    );
+  }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFD8A5A8),
-          width: 1.5,
-        ),
+        border: Border.all(color: const Color(0xFFD8A5A8), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -708,7 +736,7 @@ void _deleteProduct(Map<String, dynamic> product) {
         children: [
           // Gambar Produk (menggunakan fungsi terpisah)
           _buildProductImage(product),
-          
+
           // Info Produk
           Expanded(
             child: Padding(
@@ -737,28 +765,35 @@ void _deleteProduct(Map<String, dynamic> product) {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  
+
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Icon(
                         Icons.inventory_2_outlined,
                         size: 10,
-                        color: product['isLowStock'] ? Colors.orange : Colors.grey.shade500,
+                        color: product['isLowStock']
+                            ? Colors.orange
+                            : Colors.grey.shade500,
                       ),
                       const SizedBox(width: 3),
                       Text(
                         'Stok: ${product['stock']}',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
-                          color: product['isLowStock'] ? Colors.orange : Colors.grey.shade600,
+                          color: product['isLowStock']
+                              ? Colors.orange
+                              : Colors.grey.shade600,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       if (product['isLowStock']) ...[
                         const SizedBox(width: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF3E0),
                             borderRadius: BorderRadius.circular(6),
@@ -775,9 +810,9 @@ void _deleteProduct(Map<String, dynamic> product) {
                       ],
                     ],
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -843,8 +878,16 @@ void _deleteProduct(Map<String, dynamic> product) {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildNavItem(icon: Icons.home_outlined, label: 'Beranda', index: 0),
-          _buildNavItem(icon: Icons.inventory_2_outlined, label: 'Produk', index: 1),
-          _buildNavItem(icon: Icons.bar_chart_outlined, label: 'Laporan', index: 2),
+          _buildNavItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Produk',
+            index: 1,
+          ),
+          _buildNavItem(
+            icon: Icons.bar_chart_outlined,
+            label: 'Laporan',
+            index: 2,
+          ),
         ],
       ),
     );
@@ -865,12 +908,18 @@ void _deleteProduct(Map<String, dynamic> product) {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
-          border: isSelected ? Border.all(color: Colors.grey.shade200, width: 1) : null,
+          border: isSelected
+              ? Border.all(color: Colors.grey.shade200, width: 1)
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: const Color(0xFF803033).withOpacity(opacity), size: 18),
+            Icon(
+              icon,
+              color: const Color(0xFF803033).withOpacity(opacity),
+              size: 18,
+            ),
             const SizedBox(width: 4),
             Text(
               label,

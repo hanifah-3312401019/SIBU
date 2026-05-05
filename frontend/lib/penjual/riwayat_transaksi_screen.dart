@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/sidebar_penjual.dart';
 import 'beranda_screen.dart';
 import 'produk_screen.dart';
+import 'tambah_transaksi_baru.dart';
 
 class RiwayatTransaksiScreen extends StatefulWidget {
   final String userName;
@@ -99,11 +100,11 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
     );
   }
 
-  void _navigateToTransaksiBaru() {
+  void _navigateToTambahTransaksi() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RiwayatTransaksiScreen(
+        builder: (context) => TambahTransaksiBaru(
           userName: widget.userName,
           userEmail: widget.userEmail,
         ),
@@ -156,8 +157,6 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
       body: Stack(
         children: [
           Container(color: const Color(0xFFF5ECEA)),
-
-          // Header Gradasi
           Positioned(
             top: 0,
             left: 0,
@@ -181,20 +180,25 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
               ),
             ),
           ),
-
-          // Content
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header dengan Menu Button
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                        icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+                        onPressed: () =>
+                            _scaffoldKey.currentState?.openDrawer(),
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -215,8 +219,6 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
                     ],
                   ),
                 ),
-
-                // Title 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
@@ -231,9 +233,9 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Data transaksi penjualan',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           color: Colors.white70,
                         ),
@@ -241,10 +243,7 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // List Transaksi
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -264,7 +263,7 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
         width: 180,
         height: 48,
         child: FloatingActionButton.extended(
-          onPressed: _navigateToTransaksiBaru,
+          onPressed: _navigateToTambahTransaksi, 
           backgroundColor: const Color(0xFF803033),
           elevation: 0,
           icon: const Icon(Icons.add, color: Colors.white, size: 20),
@@ -362,7 +361,6 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
                   );
                 },
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF803033),
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -403,8 +401,16 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildNavItem(icon: Icons.home_outlined, label: 'Beranda', index: 0),
-          _buildNavItem(icon: Icons.inventory_2_outlined, label: 'Produk', index: 1),
-          _buildNavItem(icon: Icons.receipt_long_outlined, label: 'Transaksi', index: 2),
+          _buildNavItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Produk',
+            index: 1,
+          ),
+          _buildNavItem(
+            icon: Icons.receipt_long_outlined,
+            label: 'Transaksi',
+            index: 2,
+          ),
         ],
       ),
     );
@@ -417,7 +423,6 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
   }) {
     final isSelected = _selectedIndex == index;
     final opacity = isSelected ? 1.0 : 0.5;
-
     return GestureDetector(
       onTap: () => _onBottomNavTapped(index),
       child: Container(
@@ -425,12 +430,18 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
-          border: isSelected ? Border.all(color: Colors.grey.shade200, width: 1) : null,
+          border: isSelected
+              ? Border.all(color: Colors.grey.shade200, width: 1)
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: const Color(0xFF803033).withOpacity(opacity), size: 18),
+            Icon(
+              icon,
+              color: const Color(0xFF803033).withOpacity(opacity),
+              size: 18,
+            ),
             const SizedBox(width: 4),
             Text(
               label,

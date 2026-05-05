@@ -41,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
             builder: (context) => BerandaScreen(
               userName: user['name'] ?? '',
               userEmail: user['email'] ?? '',
+              isLoggedIn: true,
             ),
           ),
         );

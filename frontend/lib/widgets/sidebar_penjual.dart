@@ -6,6 +6,10 @@ import '../penjual/produk_screen.dart';
 import '../penjual/riwayat_transaksi_screen.dart';
 import '../penjual/beranda_screen.dart';
 import '../penjual/manajemen_periode_screen.dart';
+import '../penjual/laporan_penjualan.dart';
+import '../penjual/notifikasi_penjual.dart';      
+import '../penjual/rekomendasi_stok.dart';        
+import '../penjual/profil_penjual.dart';          
 
 class SidebarWidget extends StatelessWidget {
   final String userName;
@@ -88,12 +92,50 @@ class SidebarWidget extends StatelessWidget {
     );
   }
 
-  // FUNGSI UNTUK NAVIGASI KE MANAJEMEN PERIODE
   void _navigateToPeriode(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ManajemenPeriodeScreen(
+          userName: userName,
+          userEmail: userEmail,
+        ),
+      ),
+    );
+  }
+
+  void _navigateToLaporan(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LaporanPenjualan(),
+      ),
+    );
+  }
+
+  void _navigateToNotifikasi(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NotifikasiPenjual(),
+      ),
+    );
+  }
+
+  void _navigateToRekomendasiStok(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RekomendasiStok(),
+      ),
+    );
+  }
+
+  void _navigateToProfil(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilPenjual(
           userName: userName,
           userEmail: userEmail,
         ),
@@ -108,7 +150,7 @@ class SidebarWidget extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // Header Profile - WARNA MAROON
+            // Header Profile
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -209,40 +251,44 @@ class SidebarWidget extends StatelessWidget {
                     icon: Icons.assessment_outlined,
                     title: 'Laporan',
                     index: 3,
-                    onTap: () => onItemSelected(3),
+                    onTap: () => _navigateToLaporan(context),
                   ),
                   _buildMenuItem(
                     context: context,
                     icon: Icons.calendar_today_outlined,
                     title: 'Manajemen Periode',
                     index: 4,
-                    onTap: () => _navigateToPeriode(context), 
+                    onTap: () => _navigateToPeriode(context),
                   ),
+                  
+                  const Divider(height: 24, indent: 16, endIndent: 16), // pemisah
+                  
                   _buildMenuItem(
                     context: context,
                     icon: Icons.trending_up_outlined,
                     title: 'Rekomendasi Stok',
                     index: 5,
-                    onTap: () => onItemSelected(5),
+                    onTap: () => _navigateToRekomendasiStok(context),
                   ),
+                  
                   _buildMenuItem(
                     context: context,
                     icon: Icons.notifications_none_outlined,
                     title: 'Notifikasi',
                     index: 6,
-                    onTap: () => onItemSelected(6),
+                    onTap: () => _navigateToNotifikasi(context),
                   ),
+                  
                   _buildMenuItem(
                     context: context,
                     icon: Icons.person_outline,
                     title: 'Profil',
                     index: 7,
-                    onTap: () => onItemSelected(7),
+                    onTap: () => _navigateToProfil(context),
                   ),
                   
                   const SizedBox(height: 20),
                   
-                  // Logout Button
                   _buildLogoutButton(context),
                 ],
               ),
