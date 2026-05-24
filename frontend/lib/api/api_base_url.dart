@@ -4,8 +4,13 @@ class ApiBaseUrl {
 
   // Untuk device fisik (HP real), pakai IP komputer
   // Cek IP dengan `ipconfig` → IPv4 Address: 192.168.88.15
-  // static const String baseUrl = 'http://192.168.88.15:8000/api';
+  // static const String baseUrl = 'http://192.168.88.:8000/api';
 
   // Untuk development di Chrome (web)
   static const String baseUrl = 'http://localhost:8000/api';
+
+  // Endpoints
+  static const String login = '$baseUrl/login';
+  static const String logout = '$baseUrl/logout';
+  static const String me = '$baseUrl/me';
 }
