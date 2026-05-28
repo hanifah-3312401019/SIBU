@@ -1,4 +1,3 @@
-// lib/auth/login_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -37,11 +36,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse(ApiBaseUrl.login),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(ApiBaseUrl.login), 
+        headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          'email': email,
-          'password': password,
+          "email": email,
+          "password": password,
         }),
       );
 
@@ -52,6 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body);
         
         if (data['success'] == true) {
+          // Simpan data ke SharedPreferences
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', data['token']);
           await prefs.setString('nama', data['data']['nama']);
@@ -126,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 15),
 
+                  // Welcome Text
                   Text(
                     'Selamat Datang',
                     style: GoogleFonts.playfairDisplay(
@@ -145,6 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 48),
 
+                  // Error message
                   if (_errorMessage != null)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -171,6 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
+                  // Email
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -219,6 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Password
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -279,6 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
+                  // Login Button
                   _isLoading
                       ? Container(
                           height: 54,
@@ -330,22 +335,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                   const SizedBox(height: 24),
 
-                  // Info Text
+                  // Info
                   Text(
                     'Akun penjual dibuat oleh administrator.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
-                      color: const Color.fromARGB(179, 26, 20, 20),
+                      color: const Color.fromARGB(179, 21, 20, 20),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 16),
 
+                  // Footer
                   Text(
                     'SIBU © 2026',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
-                      color: const Color.fromARGB(179, 26, 20, 20),
+                      color: const Color.fromARGB(179, 21, 20, 20),
                       letterSpacing: 0.8,
                     ),
                   ),
