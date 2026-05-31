@@ -1,9 +1,9 @@
-// lib/penjual/beranda_screen.dart
 import 'package:flutter/material.dart';
 import 'package:frontend/widgets/sidebar_penjual.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'produk_screen.dart';
+import 'laporan_penjualan.dart';
 
 class BerandaScreen extends StatefulWidget {
   final String userName;
@@ -85,6 +85,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
     );
   }
 
+  void _navigateToLaporan() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LaporanPenjualan(
+          userName: widget.userName,
+          userEmail: widget.userEmail,
+        ),
+      ),
+    );
+  }
+
   void _onMenuItemSelected(int index) {
     Navigator.pop(context);
     switch (index) {
@@ -93,8 +105,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
       case 1:
         _navigateToProduk();
         break;
-      default:
-        break;
+      case 2:       
+        _navigateToLaporan();
+        break;    
     }
   }
 
@@ -105,7 +118,8 @@ class _BerandaScreenState extends State<BerandaScreen> {
       case 1:
         _navigateToProduk();
         break;
-      default:
+      case 2:       
+        _navigateToLaporan();
         break;
     }
   }

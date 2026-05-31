@@ -1,0 +1,32 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class ProdukSeeder extends Seeder
+{
+    public function run(): void
+    {
+        DB::table('produk')->truncate();
+        
+        $produk = [
+            [
+                'penjual_id' => 1,
+                'nama_produk' => 'Abaya Cokelat Elegan',
+                'deskripsi' => 'Abaya elegan warna cokelat',
+                'harga' => 385000,
+                'stok' => 15,
+                'min_stok' => 10,
+                'kategori' => 'Abaya',
+                'ukuran_stok' => json_encode([['size' => 'S', 'stock' => 5], ['size' => 'M', 'stock' => 5], ['size' => 'L', 'stock' => 5]]),
+                'gambar' => 'images/abaya_cokelat.jpg', 
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ];
+        
+        DB::table('produk')->insert($produk);
+    }
+}
