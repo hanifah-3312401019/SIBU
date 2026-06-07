@@ -1,4 +1,3 @@
-// lib/pembeli/produk_pembeli.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'detail_produk.dart';
@@ -147,103 +146,143 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Ani Butik Syar\'i',
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: kPrimaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Busana Muslim Pilihan',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      color: Colors.brown.shade400,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Container(
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: kPrimaryColor.withOpacity(0.08),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ani Butik Syar\'i',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: kPrimaryColor,
                         ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Cari Gamis Syar\'i, Jilbab, Tunik.....',
-                        hintStyle: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Busana Muslim Pilihan',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          color: Colors.brown.shade400,
                         ),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 20),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ],
+                  ),
+                  // Ikon Login di pojok kanan atas
+                  GestureDetector(
+                    onTap: _navigateToLogin,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.person_outline,
+                        color: kPrimaryColor,
+                        size: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-
-                  SizedBox(
-                    height: 34,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _kategoriList.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (_, i) {
-                        final kat = _kategoriList[i];
-                        final selected = kat == _selectedKategori;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedKategori = kat),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: selected ? kPrimaryColor : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: selected ? kPrimaryColor : Colors.grey.shade300,
-                              ),
-                            ),
-                            child: Text(
-                              kat,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: selected ? Colors.white : Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
           ),
 
+          // Content (search, filter, grid, footer)
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
+                  // Search & Filter
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Search bar
+                        Container(
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: kPrimaryColor.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: (v) => setState(() => _searchQuery = v),
+                            style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: 'Cari Gamis Syar\'i, Jilbab, Tunik.....',
+                              hintStyle: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: Colors.grey.shade400,
+                              ),
+                              prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Filter kategori
+                        SizedBox(
+                          height: 34,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _kategoriList.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (_, i) {
+                              final kat = _kategoriList[i];
+                              final selected = kat == _selectedKategori;
+                              return GestureDetector(
+                                onTap: () => setState(() => _selectedKategori = kat),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: selected ? kPrimaryColor : Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: selected ? kPrimaryColor : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    kat,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: selected ? Colors.white : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Grid Produk
                   produk.isEmpty
                       ? SizedBox(
@@ -279,30 +318,14 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
                           ),
                         ),
 
+                  // Footer "SIBU v1.0.0" (paling bawah)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: GestureDetector(
-                      onTap: _navigateToLogin,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'SIBU v1.0.0  ',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
-                          Text(
-                            'login',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              color: kPrimaryColor,
-                              decoration: TextDecoration.underline,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                    child: Text(
+                      'SIBU v1.0.0',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: Colors.grey.shade400,
                       ),
                     ),
                   ),
@@ -313,6 +336,7 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
             ),
           ),
 
+          // Bottom Navigation (Produk & Rekomendasi)
           Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -383,6 +407,7 @@ class _ProdukPembeliState extends State<ProdukPembeli> {
   }
 }
 
+// Kartu Produk
 class _ProdukCard extends StatelessWidget {
   final Map<String, dynamic> produk;
   final String Function(int) rupiah;

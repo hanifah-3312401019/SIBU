@@ -8,20 +8,20 @@ class ApiConfig {
     if (kIsWeb) {
       return "http://localhost:8000";
     }
-    
+
     // Android (Emulator)
     if (Platform.isAndroid) {
       return "http://localhost:8000";
     }
     
     // Windows/Desktop
-    return "http://localhost:8000";
+    return "http://192.168.88.13:8000";
   }
 }
 
 class ApiBaseUrl {
   static String get baseUrl => '${ApiConfig.baseUrl}/api';
-  
+
   // Auth
   static String get login => '$baseUrl/login';
   static String get logout => '$baseUrl/logout';
@@ -42,19 +42,19 @@ class ApiBaseUrl {
 
     return '';
   }
-  
+
   static String safeString(dynamic value, {String defaultValue = ''}) {
     if (value == null) return defaultValue;
     return value.toString();
   }
-  
+
   static int safeInt(dynamic value, {int defaultValue = 0}) {
     if (value == null) return defaultValue;
     if (value is int) return value;
     if (value is String) return int.tryParse(value) ?? defaultValue;
     return defaultValue;
   }
-  
+
   static List safeList(dynamic value) {
     if (value == null) return [];
     if (value is List) return value;
