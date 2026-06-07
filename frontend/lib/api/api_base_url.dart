@@ -11,7 +11,7 @@ class ApiConfig {
     
     // Android (Emulator)
     if (Platform.isAndroid) {
-      return "http://10.0.2.2:8000";
+      return "http://localhost:8000";
     }
     
     // Windows/Desktop
@@ -34,10 +34,12 @@ class ApiBaseUrl {
   // Gambar
   static String getImageUrl(dynamic path) {
     if (path == null) return '';
+
     if (path is String && path.isNotEmpty) {
-      String cleanPath = path.replaceAll('storage/', '');
-      return '${ApiConfig.baseUrl}/storage/$cleanPath';
+      String fileName = path.split('/').last;
+      return '${ApiConfig.baseUrl}/gambar/$fileName';
     }
+
     return '';
   }
   
