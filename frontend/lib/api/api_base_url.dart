@@ -32,6 +32,11 @@ class ApiBaseUrl {
   // Kategori
   static String get kategori => '$baseUrl/kategori';
 
+  // Transaksi
+  static String get transaksi => '$baseUrl/transaksi';
+  static String transaksiById(int id) => '$baseUrl/transaksi/$id';
+  static String get riwayatTransaksi => '$baseUrl/riwayat-transaksi';
+  
   // Gambar produk
   static String getImageUrl(dynamic path) {
     if (path == null) return '';
@@ -43,14 +48,14 @@ class ApiBaseUrl {
   }
 
   // Gambar size chart
-static String getSizeChartUrl(dynamic path) {
-  if (path == null) return '';
-  if (path is String && path.isNotEmpty) {
-    String fileName = path.split('/').last;
-    return '${ApiConfig.baseUrl}/size-chart/$fileName';
+  static String getSizeChartUrl(dynamic path) {
+    if (path == null) return '';
+    if (path is String && path.isNotEmpty) {
+      String fileName = path.split('/').last;
+      return '${ApiConfig.baseUrl}/size-chart/$fileName';
+    }
+    return '';
   }
-  return '';
-}
 
   static String safeString(dynamic value, {String defaultValue = ''}) {
     if (value == null) return defaultValue;

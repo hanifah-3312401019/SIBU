@@ -55,4 +55,11 @@ class Produk extends Model
     {
         return $this->gambarProduk->pluck('gambar')->toArray();
     }
+
+    // Method mengurangi stok
+    public function kurangiStok($jumlah)
+    {
+        $this->stok -= $jumlah;
+        $this->save();
+    }
 }
