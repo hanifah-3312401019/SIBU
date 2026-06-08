@@ -21,23 +21,36 @@ class TambahProdukScreen extends StatefulWidget {
 
 class _TambahProdukScreenState extends State<TambahProdukScreen> {
   final _formKey = GlobalKey<FormState>();
+  
+  // Controllers
   final TextEditingController _namaProdukController = TextEditingController();
   final TextEditingController _hargaController = TextEditingController();
   final TextEditingController _deskripsiController = TextEditingController();
-
-  String _selectedKategori = 'Gamis';
-  final List<String> _kategoriList = ['Abaya', 'Gamis', 'Baju Kurung', 'Khimar', 'Bergo'];
-
-  List<Map<String, dynamic>> _sizeStockList = [];
-  final TextEditingController _sizeController = TextEditingController();
-  final TextEditingController _stockPerSizeController = TextEditingController();
   final TextEditingController _minStokController = TextEditingController();
+  final TextEditingController _stockPerSizeController = TextEditingController();
 
-  // Gambar
-  File? _selectedImage;
-  Uint8List? _selectedImageBytes;
-  String? _imageName;
+  // Data Kategori API
+  List<Map<String, dynamic>> _kategoriList = [];
+  String? _selectedKategoriId;
+
+  // Data Ukuran & Stok
+  List<Map<String, dynamic>> _sizeStockList = [];
+  final List<String> _ukuranList = ['S', 'M', 'L', 'XL', 'XXL', 'ALL SIZE'];
+  String? _selectedUkuran;
+
+  // Multi Gambar Produk (maksimal 5)
+  List<File> _selectedImages = [];
+  List<Uint8List> _selectedImagesBytes = [];
+  List<String> _imageNames = [];
   bool _isImageSelected = false;
+
+  // Gambar Size Chart
+  File? _selectedSizeChart;
+  Uint8List? _selectedSizeChartBytes;
+  String? _sizeChartName;
+  bool _isSizeChartSelected = false;
+
+  // State
   bool _isLoading = false;
   String? _token;
 
@@ -45,19 +58,43 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   void initState() {
     super.initState();
     _loadToken();
+    _fetchKategori();
   }
 
+  // LOAD TOKEN
   Future<void> _loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('token');
   }
 
+  // FETCH KATEGORI API
+  Future<void> _fetchKategori() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiBaseUrl.kategori),
+        headers: {'Accept': 'application/json'},
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            _kategoriList = List<Map<String, dynamic>>.from(data['data']);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching kategori: $e');
+    }
+  }
+
+  // TAMBAH UKURAN & STOK
   void _addSizeStock() {
-    String size = _sizeController.text.trim();
+    String size = _selectedUkuran ?? '';
     String stockStr = _stockPerSizeController.text.trim();
 
     if (size.isEmpty) {
-      _showSnackbar('Masukkan nama ukuran!', Colors.orange);
+      _showSnackbar('Pilih ukuran terlebih dahulu!', Colors.orange);
       return;
     }
     if (stockStr.isEmpty) {
@@ -77,28 +114,74 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
 
     setState(() {
       _sizeStockList.add({'size': size, 'stock': stock});
-      _sizeController.clear();
       _stockPerSizeController.clear();
+      _selectedUkuran = null;
     });
   }
 
-  void _removeSizeStock(int index) => setState(() => _sizeStockList.removeAt(index));
+  void _removeSizeStock(int index) {
+    setState(() => _sizeStockList.removeAt(index));
+  }
 
   void _updateStock(int index, int newStock) {
-    if (newStock > 0) setState(() => _sizeStockList[index]['stock'] = newStock);
+    if (newStock > 0) {
+      setState(() => _sizeStockList[index]['stock'] = newStock);
+    }
   }
 
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  // UPLOAD MULTI GAMBAR
+  Future<void> _pickImages() async {
+    if (_selectedImages.length >= 5) {
+      _showSnackbar('Maksimal 5 gambar!', Colors.orange);
+      return;
+    }
+
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+
+      if (result != null) {
+        int availableSlots = 5 - _selectedImages.length;
+        int filesToAdd = result.files.length > availableSlots ? availableSlots : result.files.length;
+        
+        for (int i = 0; i < filesToAdd; i++) {
+          final file = result.files[i];
+          setState(() {
+            _imageNames.add(file.name);
+            if (kIsWeb) {
+              _selectedImagesBytes.add(file.bytes!);
+            } else {
+              _selectedImages.add(File(file.path!));
+            }
+            _isImageSelected = true;
+          });
+        }
+        _showSnackbar('$filesToAdd gambar berhasil ditambahkan', Colors.green);
+      }
+    } catch (e) {
+      _showSnackbar('Error: ${e.toString()}', Colors.red);
+    }
   }
 
-  Future<void> _pickImage() async {
+  void _removeImage(int index) {
+    setState(() {
+      if (kIsWeb) {
+        _selectedImagesBytes.removeAt(index);
+      } else {
+        _selectedImages.removeAt(index);
+      }
+      _imageNames.removeAt(index);
+      if (_selectedImages.isEmpty && _selectedImagesBytes.isEmpty) {
+        _isImageSelected = false;
+      }
+    });
+    _showSnackbar('Gambar dihapus', Colors.orange);
+  }
+
+  // UPLOAD SIZE CHART
+  Future<void> _pickSizeChart() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.image,
@@ -107,31 +190,37 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
 
       if (result != null) {
         final file = result.files.single;
-
         setState(() {
-          _imageName = file.name;
-          _isImageSelected = true;
-
+          _sizeChartName = file.name;
+          _isSizeChartSelected = true;
           if (kIsWeb) {
-            _selectedImageBytes = file.bytes;
-            _selectedImage = null;
+            _selectedSizeChartBytes = file.bytes;
+            _selectedSizeChart = null;
           } else {
-            _selectedImage = File(file.path!);
-            _selectedImageBytes = null;
+            _selectedSizeChart = File(file.path!);
+            _selectedSizeChartBytes = null;
           }
         });
-
-        _showSnackbar('Gambar "${file.name}" berhasil dipilih', Colors.green);
+        _showSnackbar('Size Chart "${file.name}" berhasil dipilih', Colors.green);
       }
     } catch (e) {
       _showSnackbar('Error: ${e.toString()}', Colors.red);
     }
   }
 
+  // SIMPAN PRODUK
   Future<void> _simpanProduk() async {
     if (!_formKey.currentState!.validate()) return;
     if (_sizeStockList.isEmpty) {
       _showSnackbar('Tambahkan minimal 1 ukuran dan stok!', Colors.orange);
+      return;
+    }
+    if (_selectedKategoriId == null) {
+      _showSnackbar('Pilih kategori terlebih dahulu!', Colors.orange);
+      return;
+    }
+    if (_selectedImages.isEmpty && _selectedImagesBytes.isEmpty) {
+      _showSnackbar('Pilih minimal 1 gambar produk!', Colors.orange);
       return;
     }
     if (_token == null) {
@@ -147,24 +236,36 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
 
     request.fields['nama_produk'] = _namaProdukController.text;
     request.fields['harga'] = _hargaController.text.replaceAll('.', '');
-    request.fields['kategori'] = _selectedKategori;
-    request.fields['min_stok'] = _minStokController.text;
+    request.fields['kategori_id'] = _selectedKategoriId!;
+    request.fields['min_stok'] = _minStokController.text.isNotEmpty ? _minStokController.text : '10';
     request.fields['ukuran_stok'] = jsonEncode(_sizeStockList);
     request.fields['deskripsi'] = _deskripsiController.text;
     request.fields['stok'] = _sizeStockList.fold(0, (sum, item) => sum + (item['stock'] as int)).toString();
-    request.fields['min_stok'] = '10';
 
-    // Upload gambar
-    if (_isImageSelected) {
-      if (kIsWeb && _selectedImageBytes != null) {
-        final multipartFile = http.MultipartFile.fromBytes(
-          'gambar',
-          _selectedImageBytes!,
-          filename: _imageName,
-        );
-        request.files.add(await multipartFile);
-      } else if (_selectedImage != null) {
-        request.files.add(await http.MultipartFile.fromPath('gambar', _selectedImage!.path));
+    // Upload multiple gambar produk
+    if (kIsWeb) {
+      for (int i = 0; i < _selectedImagesBytes.length; i++) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'gambar[]',
+          _selectedImagesBytes[i],
+          filename: _imageNames[i],
+        ));
+      }
+    } else {
+      for (int i = 0; i < _selectedImages.length; i++) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'gambar[]',
+          _selectedImages[i].path,
+        ));
+      }
+    }
+
+    // Upload size chart
+    if (_isSizeChartSelected) {
+      if (kIsWeb && _selectedSizeChartBytes != null) {
+        request.files.add(http.MultipartFile.fromBytes('size_chart', _selectedSizeChartBytes!, filename: _sizeChartName));
+      } else if (_selectedSizeChart != null) {
+        request.files.add(await http.MultipartFile.fromPath('size_chart', _selectedSizeChart!.path));
       }
     }
 
@@ -186,6 +287,13 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     }
   }
 
+  // HELPER
+  void _showSnackbar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color, behavior: SnackBarBehavior.floating),
+    );
+  }
+
   String formatPrice(String value) {
     if (value.isEmpty) return '';
     final number = int.tryParse(value.replaceAll('.', '')) ?? 0;
@@ -195,23 +303,29 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     );
   }
 
-  Widget _buildPreviewImage() {
-    if (!_isImageSelected) return _buildUploadPlaceholder();
+  int getTotalStock() {
+    return _sizeStockList.fold(0, (sum, item) => sum + (item['stock'] as int));
+  }
 
-    if (kIsWeb && _selectedImageBytes != null) {
-      return Image.memory(
-        _selectedImageBytes!,
-        width: double.infinity,
-        height: 140,
-        fit: BoxFit.cover,
-      );
-    } else if (_selectedImage != null) {
-      return Image.file(
-        _selectedImage!,
-        width: double.infinity,
-        height: 140,
-        fit: BoxFit.cover,
-      );
+  // WIDGET BUILD
+  Widget _buildImagePreview(int index) {
+    if (kIsWeb && index < _selectedImagesBytes.length) {
+      return Image.memory(_selectedImagesBytes[index], width: 80, height: 80, fit: BoxFit.cover);
+    } else if (index < _selectedImages.length) {
+      return Image.file(_selectedImages[index], width: 80, height: 80, fit: BoxFit.cover);
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSizeChartPreview() {
+    if (!_isSizeChartSelected) {
+      return _buildUploadPlaceholder();
+    }
+    if (kIsWeb && _selectedSizeChartBytes != null) {
+      return Image.memory(_selectedSizeChartBytes!, width: double.infinity, height: 140, fit: BoxFit.cover);
+    }
+    if (_selectedSizeChart != null) {
+      return Image.file(_selectedSizeChart!, width: double.infinity, height: 140, fit: BoxFit.cover);
     }
     return _buildUploadPlaceholder();
   }
@@ -238,7 +352,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5ECEA),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(95),
+        preferredSize: const Size.fromHeight(80),
         child: Container(
           color: Colors.white,
           child: SafeArea(
@@ -258,11 +372,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                       const SizedBox(width: 8),
                       Text(
                         'Tambah Produk',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF803033),
-                        ),
+                        style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF803033)),
                       ),
                     ],
                   ),
@@ -271,10 +381,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                   padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
                   child: Text(
                     'Lengkap detail produk',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
                   ),
                 ),
               ],
@@ -291,10 +398,100 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Tambah Foto Produk', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
+                    // FOTO PRODUK (MULTI GAMBAR)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Foto Produk (Maksimal 5)', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text('${_selectedImages.length + _selectedImagesBytes.length}/5', 
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Grid preview gambar
+                    SizedBox(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: (_selectedImages.length + _selectedImagesBytes.length) + 1,
+                        itemBuilder: (context, index) {
+                          if (index == (_selectedImages.length + _selectedImagesBytes.length)) {
+                            // Tombol tambah gambar
+                            return GestureDetector(
+                              onTap: _pickImages,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFD8A5A8), width: 2),
+                                ),
+                                child: const Icon(Icons.add_photo_alternate, size: 40, color: Color(0xFF803033)),
+                              ),
+                            );
+                          }
+                          // Preview gambar dipilih
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFD8A5A8), width: 2),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _buildImagePreview(index),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () => _removeImage(index),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, size: 18, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                              if (index == 0)
+                                Positioned(
+                                  bottom: 4,
+                                  left: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF803033),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text('Utama', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white)),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Gambar pertama akan menjadi gambar utama', 
+                        style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade500)),
+
+                    const SizedBox(height: 24),
+
+                    // SIZE CHART (OPSIONAL)
+                    Text('Size Chart (Opsional)', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     GestureDetector(
-                      onTap: _pickImage,
+                      onTap: _pickSizeChart,
                       child: Container(
                         width: double.infinity,
                         height: 140,
@@ -308,19 +505,16 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              _buildPreviewImage(),
-                              if (_isImageSelected) Container(color: Colors.black.withOpacity(0.4)),
-                              if (_isImageSelected)
+                              _buildSizeChartPreview(),
+                              if (_isSizeChartSelected) Container(color: Colors.black.withOpacity(0.4)),
+                              if (_isSizeChartSelected)
                                 Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       const Icon(Icons.check_circle, color: Colors.white, size: 32),
                                       const SizedBox(height: 8),
-                                      Text(
-                                        _imageName ?? 'Gambar terpilih',
-                                        style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.white),
-                                      ),
+                                      Text(_sizeChartName ?? 'Size Chart terpilih', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.white)),
                                     ],
                                   ),
                                 ),
@@ -329,7 +523,12 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text('Upload panduan ukuran untuk produk ini (opsional)', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade500)),
+
                     const SizedBox(height: 24),
+
+                    // NAMA PRODUK
                     Text('NAMA PRODUK', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -345,7 +544,10 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         validator: (v) => (v == null || v.isEmpty) ? 'Nama produk tidak boleh kosong' : null,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // HARGA
                     Text('HARGA', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -357,10 +559,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         onChanged: (value) {
                           final formatted = formatPrice(value);
                           if (formatted != value) {
-                            _hargaController.value = TextEditingValue(
-                              text: formatted,
-                              selection: TextSelection.collapsed(offset: formatted.length),
-                            );
+                            _hargaController.value = TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: formatted.length));
                           }
                         },
                         decoration: InputDecoration(
@@ -372,7 +571,10 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         validator: (v) => (v == null || v.isEmpty) ? 'Harga tidak boleh kosong' : null,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // KATEGORI
                     Text('KATEGORI', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -380,16 +582,33 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: _selectedKategori,
                           isExpanded: true,
+                          hint: _kategoriList.isEmpty
+                              ? Text('   Memuat kategori...', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500))
+                              : Text('   Pilih Kategori', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500)),
                           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF803033)),
                           style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.black87),
-                          items: _kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k))).toList(),
-                          onChanged: (v) => setState(() => _selectedKategori = v!),
+                          value: _selectedKategoriId,
+                          items: _kategoriList.map((k) {
+                            return DropdownMenuItem<String>(
+                              value: k['kategori_id'].toString(),
+                              child: Text(k['nama_kategori']),
+                            );
+                          }).toList(),
+                          onChanged: _kategoriList.isEmpty
+                              ? null
+                              : (String? value) {
+                                  setState(() {
+                                    _selectedKategoriId = value;
+                                  });
+                                },
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // MIN STOK
                     Text('MIN. STOK', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -406,7 +625,10 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         validator: (v) => (v == null || v.isEmpty) ? 'Min. stok tidak boleh kosong' : null,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // DESKRIPSI
                     Text('DESKRIPSI', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -420,10 +642,12 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         ),
-                        validator: (v) => null, // Deskripsi boleh kosong
                       ),
                     ),
+
                     const SizedBox(height: 24),
+
+                    // UKURAN & STOK
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -446,14 +670,23 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: TextField(
-                                  controller: _sizeController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Ukuran (S, M, L, XL)',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      hint: Text('Pilih Ukuran', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500)),
+                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF803033)),
+                                      value: _selectedUkuran,
+                                      items: _ukuranList.map((ukuran) {
+                                        return DropdownMenuItem<String>(
+                                          value: ukuran,
+                                          child: Text(ukuran, style: GoogleFonts.plusJakartaSans(fontSize: 13)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) => setState(() => _selectedUkuran = value),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -494,11 +727,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFD8A5A8), width: 1),
-                                ),
+                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFD8A5A8), width: 1)),
                                 child: Row(
                                   children: [
                                     Expanded(flex: 2, child: Text('Ukuran: ${item['size']}', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600))),
@@ -518,7 +747,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                                                 contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
                                               ),
-                                              onFieldSubmitted: (value) {
+                                              onChanged: (value) {
                                                 int newStock = int.tryParse(value) ?? 0;
                                                 if (newStock > 0) _updateStock(index, newStock);
                                               },
@@ -539,7 +768,9 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 24),
+
                     if (_sizeStockList.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -548,14 +779,14 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Total Stok:', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                            Text(
-                              '${_sizeStockList.fold(0, (s, i) => s + (i['stock'] as int))} pcs',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF803033)),
-                            ),
+                            Text('${getTotalStock()} pcs', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF803033))),
                           ],
                         ),
                       ),
+
                     const SizedBox(height: 32),
+
+                    // BUTTON
                     Row(
                       children: [
                         Expanded(
@@ -601,7 +832,7 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
     _namaProdukController.dispose();
     _hargaController.dispose();
     _deskripsiController.dispose();
-    _sizeController.dispose();
+    _minStokController.dispose();
     _stockPerSizeController.dispose();
     super.dispose();
   }

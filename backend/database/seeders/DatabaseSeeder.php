@@ -9,7 +9,9 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            ProdukSeeder::class,
+                MigrateGambarProdukSeeder::class,
+                KategoriSeeder::class,
+                ProdukSeeder::class,
         ]);
     }
 }

@@ -8,13 +8,11 @@ class ApiConfig {
     if (kIsWeb) {
       return "http://localhost:8000";
     }
-
-    // Android (Emulator)
+    // Android emulator
     if (Platform.isAndroid) {
-      return "http://localhost:8000";
+      return "http://10.0.2.2:8000";
     }
-    
-    // Windows/Desktop
+    // Android physical device
     return "http://192.168.88.13:8000";
   }
 }
@@ -30,18 +28,29 @@ class ApiBaseUrl {
   static String get me => '$baseUrl/me';
   static String get produk => '$baseUrl/produk';
   static String produkById(int id) => '$baseUrl/produk/$id';
+  
+  // Kategori
+  static String get kategori => '$baseUrl/kategori';
 
-  // Gambar
+  // Gambar produk
   static String getImageUrl(dynamic path) {
     if (path == null) return '';
-
     if (path is String && path.isNotEmpty) {
       String fileName = path.split('/').last;
       return '${ApiConfig.baseUrl}/gambar/$fileName';
     }
-
     return '';
   }
+
+  // Gambar size chart
+static String getSizeChartUrl(dynamic path) {
+  if (path == null) return '';
+  if (path is String && path.isNotEmpty) {
+    String fileName = path.split('/').last;
+    return '${ApiConfig.baseUrl}/size-chart/$fileName';
+  }
+  return '';
+}
 
   static String safeString(dynamic value, {String defaultValue = ''}) {
     if (value == null) return defaultValue;

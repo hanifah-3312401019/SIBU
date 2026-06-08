@@ -4,17 +4,26 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Produk;
+use App\Models\Kategori;
+use App\Models\GambarProduk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 
 class ProdukController extends Controller
 {
+    // GET /api/kategori
+    public function getKategori()
+    {
+        $kategori = Kategori::all();
+        return response()->json(['success' => true, 'data' => $kategori]);
+    }
+    
     // GET /api/produk
     public function index(Request $request)
     {
         $user = $request->user();
-        $produk = Produk::where('penjual_id', $user->penjual_id)->get();
+        $produk = Produk::where('penjual_id', $user->penjual_id)->with('kategori', 'gambarProduk')->get();
         
         $produk = $produk->map(function($item) {
             $ukuranStok = $item->ukuran_stok;
@@ -32,9 +41,12 @@ class ProdukController extends Controller
                 'harga' => (int)($item->harga ?? 0),
                 'stok' => (int)($item->stok ?? 0),
                 'min_stok' => (int)($item->min_stok ?? 10),
-                'kategori' => $item->kategori ?? '',
+                'kategori_id' => $item->kategori_id,
+                'kategori' => $item->kategori ? $item->kategori->nama_kategori : '',
                 'ukuran_stok' => $ukuranStok,
-                'gambar' => $item->gambar ?? '',
+                'gambar' => $item->gambarProduk->isNotEmpty() ? $item->gambarProduk->first()->gambar : '',
+                'gambar_list' => $item->gambarProduk->map(fn($g) => $g->gambar)->toArray(),
+                'size_chart' => $item->size_chart ?? '',
                 'created_at' => $item->created_at,
                 'updated_at' => $item->updated_at,
             ];
@@ -51,8 +63,10 @@ class ProdukController extends Controller
         $validator = Validator::make($request->all(), [
             'nama_produk' => 'required|string|max:200',
             'harga' => 'required|integer|min:0',
-            'kategori' => 'required|string',
+            'kategori_id' => 'required|exists:kategori,kategori_id',
             'ukuran_stok' => 'required',
+            'gambar' => 'required|array|min:1|max:5',
+            'gambar.*' => 'file|image|mimes:jpeg,png,jpg|max:2048',
         ]);
         
         if ($validator->fails()) {
@@ -61,7 +75,7 @@ class ProdukController extends Controller
         
         $user = $request->user();
         
-        // Handle ukuran_stok (decode dari JSON string)
+        // Handle ukuran_stok
         $ukuranStok = $request->ukuran_stok;
         if (is_string($ukuranStok)) {
             $ukuranStok = json_decode($ukuranStok, true);
@@ -70,30 +84,45 @@ class ProdukController extends Controller
             $ukuranStok = [];
         }
         
-        // Handle upload gambar
-        $gambarPath = null;
-        if ($request->hasFile('gambar')) {
-            $file = $request->file('gambar');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $gambarPath = $file->storeAs('images', $filename, 'public');
+        // Handle upload size chart
+        $sizeChartPath = null;
+        if ($request->hasFile('size_chart')) {
+            $file = $request->file('size_chart');
+            $filename = 'sizechart_' . time() . '_' . $file->getClientOriginalName();
+            $sizeChartPath = $file->storeAs('size_charts', $filename, 'public');
         }
         
+        // Buat produk
         $produk = Produk::create([
             'penjual_id' => $user->penjual_id,
+            'kategori_id' => $request->kategori_id,
             'nama_produk' => $request->nama_produk,
             'deskripsi' => $request->deskripsi,
             'harga' => $request->harga,
             'stok' => $request->stok ?? 0,
             'min_stok' => $request->min_stok ?? 10,
-            'kategori' => $request->kategori,
             'ukuran_stok' => $ukuranStok,
-            'gambar' => $gambarPath,
+            'size_chart' => $sizeChartPath,
         ]);
+        
+        // Upload multiple gambar
+        if ($request->hasFile('gambar')) {
+            foreach ($request->file('gambar') as $index => $file) {
+                $filename = time() . '_' . $index . '_' . $file->getClientOriginalName();
+                $gambarPath = $file->storeAs('images', $filename, 'public');
+                
+                GambarProduk::create([
+                    'produk_id' => $produk->produk_id,
+                    'gambar' => $gambarPath,
+                    'urutan' => $index,
+                ]);
+            }
+        }
         
         return response()->json([
             'success' => true,
             'message' => 'Produk berhasil ditambahkan',
-            'data' => $produk
+            'data' => $produk->load('gambarProduk')
         ], 201);
     }
     
@@ -107,6 +136,8 @@ class ProdukController extends Controller
         $validator = Validator::make($request->all(), [
             'nama_produk' => 'string|max:200',
             'harga' => 'integer|min:0',
+            'kategori_id' => 'exists:kategori,kategori_id',
+            'gambar.*' => 'file|image|mimes:jpeg,png,jpg|max:2048',
         ]);
         
         if ($validator->fails()) {
@@ -119,40 +150,78 @@ class ProdukController extends Controller
             'harga' => $request->harga ?? $produk->harga,
             'stok' => $request->stok ?? $produk->stok,
             'min_stok' => $request->min_stok ?? $produk->min_stok,
-            'kategori' => $request->kategori ?? $produk->kategori,
+            'kategori_id' => $request->kategori_id ?? $produk->kategori_id,
         ];
         
-        // Handle ukuran_stok (decode dari JSON string)
+        // Handle ukuran_stok
         if ($request->has('ukuran_stok')) {
             $ukuranStok = $request->ukuran_stok;
-        
-            // Decode sampai array
             while (is_string($ukuranStok)) {
                 $ukuranStok = json_decode($ukuranStok, true);
             }
-        
             if (is_array($ukuranStok)) {
                 $updateData['ukuran_stok'] = $ukuranStok;
-                \Log::info('Ukuran stok saved: ', $updateData['ukuran_stok']);
             }
         }
         
-        // Handle upload gambar baru
-        if ($request->hasFile('gambar')) {
-            if ($produk->gambar && Storage::disk('public')->exists($produk->gambar)) {
-                Storage::disk('public')->delete($produk->gambar);
+        // Handle upload size chart
+        if ($request->hasFile('size_chart')) {
+            if ($produk->size_chart && Storage::disk('public')->exists($produk->size_chart)) {
+                Storage::disk('public')->delete($produk->size_chart);
             }
-            $file = $request->file('gambar');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $updateData['gambar'] = $file->storeAs('images', $filename, 'public');
+            $file = $request->file('size_chart');
+            $filename = 'sizechart_' . time() . '_' . $file->getClientOriginalName();
+            $updateData['size_chart'] = $file->storeAs('size_charts', $filename, 'public');
+        } elseif ($request->has('delete_size_chart') && $request->delete_size_chart == 'true') {
+            if ($produk->size_chart && Storage::disk('public')->exists($produk->size_chart)) {
+                Storage::disk('public')->delete($produk->size_chart);
+            }
+            $updateData['size_chart'] = null;
         }
         
         $produk->update($updateData);
         
+        // Handle multiple gambar upload
+        if ($request->hasFile('gambar')) {
+            foreach ($request->file('gambar') as $index => $file) {
+                $filename = time() . '_' . $index . '_' . $file->getClientOriginalName();
+                $gambarPath = $file->storeAs('images', $filename, 'public');
+                
+                GambarProduk::create([
+                    'produk_id' => $produk->produk_id,
+                    'gambar' => $gambarPath,
+                    'urutan' => $produk->gambarProduk()->count() + $index,
+                ]);
+            }
+        }
+        
+        // Handle hapus gambar berdasarkan ID
+        if ($request->has('delete_gambar_ids')) {
+            $deleteIds = explode(',', $request->delete_gambar_ids);
+            foreach ($deleteIds as $gambarId) {
+                $gambar = GambarProduk::find($gambarId);
+                if ($gambar && $gambar->produk_id == $produk->produk_id) {
+                    if (Storage::disk('public')->exists($gambar->gambar)) {
+                        Storage::disk('public')->delete($gambar->gambar);
+                    }
+                    $gambar->delete();
+                }
+            }
+        }
+        
+        // Update urutan gambar
+        if ($request->has('gambar_urutan')) {
+            foreach ($request->gambar_urutan as $gambarId => $urutan) {
+                GambarProduk::where('gambar_id', $gambarId)
+                    ->where('produk_id', $produk->produk_id)
+                    ->update(['urutan' => $urutan]);
+            }
+        }
+        
         return response()->json([
             'success' => true,
             'message' => 'Produk berhasil diupdate',
-            'data' => $produk
+            'data' => $produk->load('gambarProduk')
         ]);
     }
     
@@ -160,9 +229,18 @@ class ProdukController extends Controller
     public function destroy($id)
     {
         $produk = Produk::findOrFail($id);
-        if ($produk->gambar && Storage::disk('public')->exists($produk->gambar)) {
-            Storage::disk('public')->delete($produk->gambar);
+        
+        // Hapus semua gambar produk
+        foreach ($produk->gambarProduk as $gambar) {
+            if (Storage::disk('public')->exists($gambar->gambar)) {
+                Storage::disk('public')->delete($gambar->gambar);
+            }
         }
+        
+        if ($produk->size_chart && Storage::disk('public')->exists($produk->size_chart)) {
+            Storage::disk('public')->delete($produk->size_chart);
+        }
+        
         $produk->delete();
         
         return response()->json([

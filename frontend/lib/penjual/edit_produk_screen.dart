@@ -22,23 +22,40 @@ class EditProdukScreen extends StatefulWidget {
 
 class _EditProdukScreenState extends State<EditProdukScreen> {
   final _formKey = GlobalKey<FormState>();
+  
+  // Controllers
   late TextEditingController _namaProdukController;
   late TextEditingController _hargaController;
   late TextEditingController _deskripsiController;
   late TextEditingController _minStokController;
-
-  late String _selectedKategori;
-  final List<String> _kategoriList = ['Abaya', 'Gamis', 'Baju Kurung', 'Khimar', 'Bergo'];
-
-  List<Map<String, dynamic>> _sizeStockList = [];
-  final TextEditingController _sizeController = TextEditingController();
   final TextEditingController _stockPerSizeController = TextEditingController();
 
-  // Gambar
-  File? _selectedImage;
-  Uint8List? _selectedImageBytes;
-  String? _imageName;
-  bool _isImageChanged = false;
+  // Data Kategori API
+  List<Map<String, dynamic>> _kategoriList = [];
+  String? _selectedKategoriId;
+
+  // Data Ukuran & Stok
+  List<Map<String, dynamic>> _sizeStockList = [];
+  final List<String> _ukuranList = ['S', 'M', 'L', 'XL', 'XXL', 'ALL SIZE'];
+  String? _selectedUkuran;
+
+  // Multi Gambar Produk
+  List<File> _newImages = [];
+  List<Uint8List> _newImagesBytes = [];
+  List<String> _newImageNames = [];
+  
+  // Gambar yang ada di db
+  List<Map<String, dynamic>> _existingImages = [];
+  List<int> _deletedImageIds = [];
+
+  // Gambar Size Chart
+  File? _selectedSizeChart;
+  Uint8List? _selectedSizeChartBytes;
+  String? _sizeChartName;
+  bool _isSizeChartChanged = false;
+  bool _isSizeChartDeleted = false;
+
+  // State
   bool _isLoading = false;
   String? _token;
 
@@ -46,34 +63,78 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
   void initState() {
     super.initState();
     _loadToken();
+    _fetchKategori();
+    _initControllers();
+    _loadExistingImages();
+  }
+
+  void _initControllers() {
     _namaProdukController = TextEditingController(text: widget.produk['nama_produk']);
     _hargaController = TextEditingController(text: widget.produk['harga'].toString());
     _deskripsiController = TextEditingController(text: widget.produk['deskripsi'] ?? '');
     _minStokController = TextEditingController(text: widget.produk['min_stok'].toString());
-    _selectedKategori = widget.produk['kategori'] ?? 'Gamis';
+    
+    _selectedKategoriId = widget.produk['kategori_id']?.toString();
 
     if (widget.produk['ukuran_stok'] != null) {
       _sizeStockList = List<Map<String, dynamic>>.from(widget.produk['ukuran_stok']);
     }
   }
 
+  void _loadExistingImages() {
+    if (widget.produk['gambar_list'] != null) {
+      final List<dynamic> gambarList = widget.produk['gambar_list'];
+      for (int i = 0; i < gambarList.length; i++) {
+        _existingImages.add({
+          'id': i,
+          'path': gambarList[i],
+          'isMain': i == 0,
+        });
+      }
+    }
+  }
+
+  // LOAD TOKEN
   Future<void> _loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('token');
   }
 
+  // FETCH KATEGORI API
+  Future<void> _fetchKategori() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiBaseUrl.kategori),
+        headers: {'Accept': 'application/json'},
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            _kategoriList = List<Map<String, dynamic>>.from(data['data']);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching kategori: $e');
+    }
+  }
+
+  // TAMBAH UKURAN & STOK
   void _addSizeStock() {
-    String size = _sizeController.text.trim();
+    String size = _selectedUkuran ?? '';
     String stockStr = _stockPerSizeController.text.trim();
 
     if (size.isEmpty) {
-      _showSnackbar('Masukkan nama ukuran!', Colors.orange);
+      _showSnackbar('Pilih ukuran terlebih dahulu!', Colors.orange);
       return;
     }
     if (stockStr.isEmpty) {
       _showSnackbar('Masukkan jumlah stok!', Colors.orange);
       return;
     }
+
     int stock = int.tryParse(stockStr) ?? 0;
     if (stock <= 0) {
       _showSnackbar('Stok harus lebih dari 0!', Colors.orange);
@@ -86,67 +147,130 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
 
     setState(() {
       _sizeStockList.add({'size': size, 'stock': stock});
-      _sizeController.clear();
       _stockPerSizeController.clear();
+      _selectedUkuran = null;
     });
   }
 
-  void _removeSizeStock(int index) => setState(() => _sizeStockList.removeAt(index));
+  void _removeSizeStock(int index) {
+    setState(() => _sizeStockList.removeAt(index));
+  }
 
   void _updateStock(int index, int newStock) {
-    print('Updating stock - Index: $index, New Stock: $newStock'); // Debug
     if (newStock > 0) {
-      setState(() {
-        _sizeStockList[index]['stock'] = newStock;
-        print('Updated _sizeStockList: $_sizeStockList'); // Debug
-      });
+      setState(() => _sizeStockList[index]['stock'] = newStock);
     }
   }
 
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
+  // UPLOAD MULTI GAMBAR BARU
+  Future<void> _pickNewImages() async {
+    int totalImages = _existingImages.length + _newImages.length + _newImagesBytes.length;
+    if (totalImages >= 5) {
+      _showSnackbar('Maksimal 5 gambar!', Colors.orange);
+      return;
+    }
 
-  Future<void> _pickImage() async {
+    int availableSlots = 5 - totalImages;
+
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.image,
-        allowMultiple: false,
+        allowMultiple: true,
       );
 
       if (result != null) {
-        final file = result.files.single;
-
-        setState(() {
-          _imageName = file.name;
-          _isImageChanged = true;
-
-          if (kIsWeb) {
-            _selectedImageBytes = file.bytes;
-            _selectedImage = null;
-          } else {
-            _selectedImage = File(file.path!);
-            _selectedImageBytes = null;
-          }
-        });
-
-        _showSnackbar('Gambar "${file.name}" berhasil dipilih', Colors.green);
+        int filesToAdd = result.files.length > availableSlots ? availableSlots : result.files.length;
+        
+        for (int i = 0; i < filesToAdd; i++) {
+          final file = result.files[i];
+          setState(() {
+            _newImageNames.add(file.name);
+            if (kIsWeb) {
+              _newImagesBytes.add(file.bytes!);
+            } else {
+              _newImages.add(File(file.path!));
+            }
+          });
+        }
+        _showSnackbar('$filesToAdd gambar berhasil ditambahkan', Colors.green);
       }
     } catch (e) {
       _showSnackbar('Error: ${e.toString()}', Colors.red);
     }
   }
 
+  void _removeExistingImage(int index) {
+    setState(() {
+      final image = _existingImages[index];
+      if (image['id'] is int && image['id'] > 0) {
+        _deletedImageIds.add(image['id']);
+      }
+      _existingImages.removeAt(index);
+    });
+    _showSnackbar('Gambar dihapus', Colors.orange);
+  }
+
+  void _removeNewImage(int index) {
+    setState(() {
+      if (kIsWeb) {
+        _newImagesBytes.removeAt(index);
+      } else {
+        _newImages.removeAt(index);
+      }
+      _newImageNames.removeAt(index);
+    });
+    _showSnackbar('Gambar dihapus', Colors.orange);
+  }
+
+  // UPLOAD SIZE CHART
+  Future<void> _pickSizeChart() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
+      if (result != null) {
+        final file = result.files.single;
+        setState(() {
+          _sizeChartName = file.name;
+          _isSizeChartChanged = true;
+          _isSizeChartDeleted = false;
+          if (kIsWeb) {
+            _selectedSizeChartBytes = file.bytes;
+            _selectedSizeChart = null;
+          } else {
+            _selectedSizeChart = File(file.path!);
+            _selectedSizeChartBytes = null;
+          }
+        });
+        _showSnackbar('Size Chart "${file.name}" berhasil dipilih', Colors.green);
+      }
+    } catch (e) {
+      _showSnackbar('Error: ${e.toString()}', Colors.red);
+    }
+  }
+
+  void _deleteSizeChart() {
+    setState(() {
+      _isSizeChartDeleted = true;
+      _isSizeChartChanged = false;
+      _selectedSizeChart = null;
+      _selectedSizeChartBytes = null;
+      _sizeChartName = null;
+    });
+    _showSnackbar('Size Chart dihapus', Colors.orange);
+  }
+
+  // SIMPAN PERUBAHAN
   Future<void> _simpanPerubahan() async {
     if (!_formKey.currentState!.validate()) return;
     if (_sizeStockList.isEmpty) {
       _showSnackbar('Tambahkan minimal 1 ukuran dan stok!', Colors.orange);
+      return;
+    }
+    if (_selectedKategoriId == null) {
+      _showSnackbar('Pilih kategori terlebih dahulu!', Colors.orange);
+      return;
+    }
+    if (_existingImages.isEmpty && _newImages.isEmpty && _newImagesBytes.isEmpty) {
+      _showSnackbar('Pilih minimal 1 gambar produk!', Colors.orange);
       return;
     }
     if (_token == null) {
@@ -156,34 +280,42 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
 
     setState(() => _isLoading = true);
 
-    // Debug: Tampilkan data ukuran_stok yang akan dikirim
-    print('========== DATA YANG AKAN DIKIRIM ==========');
-    print('_sizeStockList: $_sizeStockList');
-    print('ukuran_stok JSON: ${jsonEncode(_sizeStockList)}');
-
     var request = http.MultipartRequest('POST', Uri.parse(ApiBaseUrl.produkById(widget.produk['produk_id'])));
     request.headers['Authorization'] = 'Bearer $_token';
     request.headers['Accept'] = 'application/json';
     request.fields['_method'] = 'PUT';
     request.fields['nama_produk'] = _namaProdukController.text;
     request.fields['harga'] = _hargaController.text.replaceAll('.', '');
-    request.fields['kategori'] = _selectedKategori;
+    request.fields['kategori_id'] = _selectedKategoriId!;
     request.fields['min_stok'] = _minStokController.text;
     request.fields['ukuran_stok'] = jsonEncode(_sizeStockList);
     request.fields['deskripsi'] = _deskripsiController.text;
     request.fields['stok'] = _sizeStockList.fold(0, (sum, item) => sum + (item['stock'] as int)).toString();
 
-    // Upload gambar baru jika ada
-    if (_isImageChanged) {
-      if (kIsWeb && _selectedImageBytes != null) {
-        final multipartFile = http.MultipartFile.fromBytes(
-          'gambar',
-          _selectedImageBytes!,
-          filename: _imageName,
-        );
-        request.files.add(await multipartFile);
-      } else if (_selectedImage != null) {
-        request.files.add(await http.MultipartFile.fromPath('gambar', _selectedImage!.path));
+    // Kirim ID gambar dihapus
+    if (_deletedImageIds.isNotEmpty) {
+      request.fields['delete_gambar_ids'] = _deletedImageIds.join(',');
+    }
+
+    // Upload gambar baru
+    if (kIsWeb) {
+      for (int i = 0; i < _newImagesBytes.length; i++) {
+        request.files.add(http.MultipartFile.fromBytes('gambar[]', _newImagesBytes[i], filename: _newImageNames[i]));
+      }
+    } else {
+      for (int i = 0; i < _newImages.length; i++) {
+        request.files.add(await http.MultipartFile.fromPath('gambar[]', _newImages[i].path));
+      }
+    }
+
+    // Handle size chart
+    if (_isSizeChartDeleted) {
+      request.fields['delete_size_chart'] = 'true';
+    } else if (_isSizeChartChanged) {
+      if (kIsWeb && _selectedSizeChartBytes != null) {
+        request.files.add(http.MultipartFile.fromBytes('size_chart', _selectedSizeChartBytes!, filename: _sizeChartName));
+      } else if (_selectedSizeChart != null) {
+        request.files.add(await http.MultipartFile.fromPath('size_chart', _selectedSizeChart!.path));
       }
     }
 
@@ -205,43 +337,66 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     }
   }
 
-  String formatPrice(String value) {
-    if (value.isEmpty) return '';
-    final number = int.tryParse(value.replaceAll('.', '')) ?? 0;
-    return number.toString().replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
+  // HELPER
+  void _showSnackbar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color, behavior: SnackBarBehavior.floating),
     );
   }
 
-  Widget _buildPreviewImage() {
-    if (_isImageChanged) {
-      if (kIsWeb && _selectedImageBytes != null) {
-        return Image.memory(
-          _selectedImageBytes!,
-          width: double.infinity,
-          height: 140,
-          fit: BoxFit.cover,
-        );
-      } else if (_selectedImage != null) {
-        return Image.file(
-          _selectedImage!,
-          width: double.infinity,
-          height: 140,
-          fit: BoxFit.cover,
-        );
-      }
-    }
-    return _buildExistingImage();
+  String formatPrice(String value) {
+    if (value.isEmpty) return '';
+    final number = int.tryParse(value.replaceAll('.', '')) ?? 0;
+    return number.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.');
   }
 
-  Widget _buildExistingImage() {
-    final String? gambar = widget.produk['gambar'];
-    final String imageUrl = ApiBaseUrl.getImageUrl(gambar);
+  int getTotalStock() {
+    return _sizeStockList.fold(0, (sum, item) => sum + (item['stock'] as int));
+  }
 
-    if (gambar != null && gambar.isNotEmpty && imageUrl.isNotEmpty) {
+  // WIDGET BUILD
+  Widget _buildExistingImagePreview(String path, int index) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        ApiBaseUrl.getImageUrl(path),
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: 100,
+          height: 100,
+          color: Colors.grey.shade200,
+          child: const Icon(Icons.broken_image, size: 40),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewImagePreview(int index) {
+    if (kIsWeb && index < _newImagesBytes.length) {
+      return Image.memory(_newImagesBytes[index], width: 100, height: 100, fit: BoxFit.cover);
+    } else if (index < _newImages.length) {
+      return Image.file(_newImages[index], width: 100, height: 100, fit: BoxFit.cover);
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSizeChartPreview() {
+    if (_isSizeChartDeleted) {
+      return _buildUploadPlaceholder();
+    }
+    if (_isSizeChartChanged) {
+      if (kIsWeb && _selectedSizeChartBytes != null) {
+        return Image.memory(_selectedSizeChartBytes!, width: double.infinity, height: 140, fit: BoxFit.cover);
+      }
+      if (_selectedSizeChart != null) {
+        return Image.file(_selectedSizeChart!, width: double.infinity, height: 140, fit: BoxFit.cover);
+      }
+    }
+    if (widget.produk['size_chart'] != null && widget.produk['size_chart'].isNotEmpty) {
       return Image.network(
-        imageUrl,
+        ApiBaseUrl.getSizeChartUrl(widget.produk['size_chart']),
         width: double.infinity,
         height: 140,
         fit: BoxFit.cover,
@@ -255,11 +410,8 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0xFFF5ECEA), shape: BoxShape.circle),
-          child: const Icon(Icons.cloud_upload_outlined, size: 32, color: Color(0xFF803033)),
-        ),
+        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFF5ECEA), shape: BoxShape.circle),
+          child: const Icon(Icons.cloud_upload_outlined, size: 32, color: Color(0xFF803033))),
         const SizedBox(height: 12),
         Text('Klik untuk pilih gambar', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600)),
         const SizedBox(height: 4),
@@ -270,10 +422,12 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
 
   @override
   Widget build(BuildContext context) {
+    int totalImages = _existingImages.length + _newImages.length + _newImagesBytes.length;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5ECEA),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(95),
+        preferredSize: const Size.fromHeight(80),
         child: Container(
           color: Colors.white,
           child: SafeArea(
@@ -284,33 +438,15 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFF803033)),
-                        onPressed: () => Navigator.pop(context),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
+                      IconButton(icon: const Icon(Icons.arrow_back, color: Color(0xFF803033)), onPressed: () => Navigator.pop(context), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
                       const SizedBox(width: 8),
-                      Text(
-                        'Edit Produk',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF803033),
-                        ),
-                      ),
+                      Text('Edit Produk', style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF803033))),
                     ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                  child: Text(
-                    'Lengkap detail produk',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
+                  child: Text('Lengkap detail produk', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600)),
                 ),
               ],
             ),
@@ -326,41 +462,170 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Foto Produk', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
+                    // FOTO PRODUK (MULTI GAMBAR)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Foto Produk (Maksimal 5)', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text('$totalImages/5', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Grid preview gambar existing & baru
+                    SizedBox(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: totalImages + 1,
+                        itemBuilder: (context, index) {
+                          // Tombol tambah gambar
+                          if (index == totalImages) {
+                            return GestureDetector(
+                              onTap: _pickNewImages,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFD8A5A8), width: 2),
+                                ),
+                                child: const Icon(Icons.add_photo_alternate, size: 40, color: Color(0xFF803033)),
+                              ),
+                            );
+                          }
+                          
+                          // Preview gambar existing
+                          if (index < _existingImages.length) {
+                            return Stack(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  margin: const EdgeInsets.only(right: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFD8A5A8), width: 2),
+                                  ),
+                                  child: _buildExistingImagePreview(_existingImages[index]['path'], index),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 8,
+                                  child: GestureDetector(
+                                    onTap: () => _removeExistingImage(index),
+                                    child: Container(
+                                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                      child: const Icon(Icons.close, size: 18, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                                if (index == 0)
+                                  Positioned(
+                                    bottom: 4,
+                                    left: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(color: const Color(0xFF803033), borderRadius: BorderRadius.circular(4)),
+                                      child: Text('Utama', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white)),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          }
+                          
+                          // Preview gambar baru
+                          int newIndex = index - _existingImages.length;
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFD8A5A8), width: 2),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: _buildNewImagePreview(newIndex),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () => _removeNewImage(newIndex),
+                                  child: Container(
+                                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                    child: const Icon(Icons.close, size: 18, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                              if (_existingImages.isEmpty && newIndex == 0)
+                                Positioned(
+                                  bottom: 4,
+                                  left: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: const Color(0xFF803033), borderRadius: BorderRadius.circular(4)),
+                                    child: Text('Utama', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white)),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Gambar pertama akan menjadi gambar utama', 
+                        style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade500)),
+
+                    const SizedBox(height: 24),
+
+                    // SIZE CHART (OPSIONAL)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Size Chart (Opsional)', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
+                        if (widget.produk['size_chart'] != null && widget.produk['size_chart'].isNotEmpty && !_isSizeChartChanged && !_isSizeChartDeleted)
+                          TextButton(
+                            onPressed: _deleteSizeChart,
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            child: const Text('Hapus Size Chart'),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     GestureDetector(
-                      onTap: _pickImage,
+                      onTap: _pickSizeChart,
                       child: Container(
                         width: double.infinity,
                         height: 140,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFD8A5A8), width: 2),
-                        ),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFD8A5A8), width: 2)),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              _buildPreviewImage(),
+                              _buildSizeChartPreview(),
                               Container(color: Colors.black.withOpacity(0.4)),
                               Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    _isImageChanged
+                                    _isSizeChartChanged
                                         ? const Icon(Icons.check_circle, color: Colors.white, size: 32)
                                         : const Icon(Icons.edit, color: Colors.white, size: 28),
                                     const SizedBox(height: 8),
                                     Text(
-                                      _isImageChanged
-                                          ? (_imageName ?? 'Gambar terpilih')
-                                          : 'Klik untuk ganti gambar',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                      ),
+                                      _isSizeChartChanged
+                                          ? (_sizeChartName ?? 'Size Chart terpilih')
+                                          : 'Klik untuk ganti Size Chart',
+                                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.white),
+                                      textAlign: TextAlign.center,
                                     ),
                                   ],
                                 ),
@@ -370,7 +635,12 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text('Upload panduan ukuran untuk produk ini (opsional)', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade500)),
+
                     const SizedBox(height: 24),
+
+                    // NAMA PRODUK
                     Text('NAMA PRODUK', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -378,15 +648,14 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                       child: TextFormField(
                         controller: _namaProdukController,
                         style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Nama produk',
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
+                        decoration: const InputDecoration(hintText: 'Nama produk', border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16)),
                         validator: (v) => (v == null || v.isEmpty) ? 'Nama produk tidak boleh kosong' : null,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // HARGA
                     Text('HARGA', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -398,22 +667,17 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                         onChanged: (value) {
                           final formatted = formatPrice(value);
                           if (formatted != value) {
-                            _hargaController.value = TextEditingValue(
-                              text: formatted,
-                              selection: TextSelection.collapsed(offset: formatted.length),
-                            );
+                            _hargaController.value = TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: formatted.length));
                           }
                         },
-                        decoration: InputDecoration(
-                          prefixText: 'Rp ',
-                          hintText: '387.000',
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
+                        decoration: const InputDecoration(prefixText: 'Rp ', hintText: '387.000', border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16)),
                         validator: (v) => (v == null || v.isEmpty) ? 'Harga tidak boleh kosong' : null,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // KATEGORI
                     Text('KATEGORI', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -421,16 +685,33 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: _selectedKategori,
                           isExpanded: true,
+                          hint: _kategoriList.isEmpty
+                              ? Text('   Memuat kategori...', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500))
+                              : Text('   Pilih Kategori', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500)),
                           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF803033)),
                           style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.black87),
-                          items: _kategoriList.map((k) => DropdownMenuItem(value: k, child: Text(k))).toList(),
-                          onChanged: (v) => setState(() => _selectedKategori = v!),
+                          value: _selectedKategoriId,
+                          items: _kategoriList.map((k) {
+                            return DropdownMenuItem<String>(
+                              value: k['kategori_id'].toString(),
+                              child: Text(k['nama_kategori']),
+                            );
+                          }).toList(),
+                          onChanged: _kategoriList.isEmpty
+                              ? null
+                              : (String? value) {
+                                  setState(() {
+                                    _selectedKategoriId = value;
+                                  });
+                                },
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // MIN STOK
                     Text('MIN. STOK', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -439,15 +720,14 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                         controller: _minStokController,
                         keyboardType: TextInputType.number,
                         style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: '10',
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
+                        decoration: const InputDecoration(hintText: '10', border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16)),
                         validator: (v) => (v == null || v.isEmpty) ? 'Min. stok tidak boleh kosong' : null,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // DESKRIPSI
                     Text('DESKRIPSI', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
                     Container(
@@ -456,22 +736,16 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                         controller: _deskripsiController,
                         maxLines: 4,
                         style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Deskripsi produk...',
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                        validator: (v) => null, // Deskripsi boleh kosong
+                        decoration: const InputDecoration(hintText: 'Deskripsi produk...', border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16)),
                       ),
                     ),
+
                     const SizedBox(height: 24),
+
+                    // UKURAN & STOK
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5ECEA),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFD8A5A8), width: 1),
-                      ),
+                      decoration: BoxDecoration(color: const Color(0xFFF5ECEA), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFD8A5A8), width: 1)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -487,14 +761,18 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: TextField(
-                                  controller: _sizeController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Ukuran (S, M, L, XL)',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      hint: Text('Pilih Ukuran', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500)),
+                                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF803033)),
+                                      value: _selectedUkuran,
+                                      items: _ukuranList.map((ukuran) => DropdownMenuItem(value: ukuran, child: Text(ukuran, style: GoogleFonts.plusJakartaSans(fontSize: 13)))).toList(),
+                                      onChanged: (value) => setState(() => _selectedUkuran = value),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -504,22 +782,15 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                                 child: TextField(
                                   controller: _stockPerSizeController,
                                   keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    hintText: 'Stok',
-                                    filled: true,
-                                    fillColor: Colors.white,
+                                  decoration: InputDecoration(hintText: 'Stok', filled: true, fillColor: Colors.white,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Container(
                                 decoration: BoxDecoration(color: const Color(0xFF803033), borderRadius: BorderRadius.circular(10)),
-                                child: IconButton(
-                                  icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                                  onPressed: _addSizeStock,
-                                ),
+                                child: IconButton(icon: const Icon(Icons.add, color: Colors.white, size: 20), onPressed: _addSizeStock),
                               ),
                             ],
                           ),
@@ -535,11 +806,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFD8A5A8), width: 1),
-                                ),
+                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFD8A5A8), width: 1)),
                                 child: Row(
                                   children: [
                                     Expanded(flex: 2, child: Text('Ukuran: ${item['size']}', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600))),
@@ -554,26 +821,18 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                                               initialValue: item['stock'].toString(),
                                               keyboardType: TextInputType.number,
                                               style: GoogleFonts.plusJakartaSans(fontSize: 13),
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-                                              ),
+                                              decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)))),
                                               onChanged: (value) {
                                                 int newStock = int.tryParse(value) ?? 0;
-                                                if (newStock > 0) {
-                                                  _updateStock(index, newStock);
-                                                }
+                                                if (newStock > 0) _updateStock(index, newStock);
                                               },
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                                      onPressed: () => _removeSizeStock(index),
-                                    ),
+                                    IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18), onPressed: () => _removeSizeStock(index)),
                                   ],
                                 ),
                               );
@@ -582,7 +841,9 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 24),
+
                     if (_sizeStockList.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -591,14 +852,14 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Total Stok:', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                            Text(
-                              '${_sizeStockList.fold(0, (s, i) => s + (i['stock'] as int))} pcs',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF803033)),
-                            ),
+                            Text('${getTotalStock()} pcs', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF803033))),
                           ],
                         ),
                       ),
+
                     const SizedBox(height: 32),
+
+                    // BUTTON
                     Row(
                       children: [
                         Expanded(
@@ -607,10 +868,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                             height: 48,
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFF803033), width: 1.5),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
+                              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF803033), width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                               child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF803033))),
                             ),
                           ),
@@ -622,11 +880,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
                             height: 48,
                             child: ElevatedButton(
                               onPressed: _simpanPerubahan,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF803033),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                elevation: 0,
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF803033), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
                               child: Text('Simpan Perubahan', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                             ),
                           ),
@@ -646,7 +900,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     _namaProdukController.dispose();
     _hargaController.dispose();
     _deskripsiController.dispose();
-    _sizeController.dispose();
+    _minStokController.dispose();
     _stockPerSizeController.dispose();
     super.dispose();
   }

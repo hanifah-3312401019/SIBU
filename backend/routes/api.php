@@ -7,7 +7,10 @@ use App\Http\Controllers\Api\ProdukController;
 // Auth
 Route::post('/login', [LoginController::class, 'login']);
 
-// Protected routes dengan middleware sanctum
+// Kategori
+Route::get('/kategori', [ProdukController::class, 'getKategori']);
+
+// Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout']);
     Route::get('/me', [LoginController::class, 'me']);
