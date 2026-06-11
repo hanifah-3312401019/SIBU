@@ -12,6 +12,121 @@ use Illuminate\Support\Facades\Storage;
 
 class ProdukController extends Controller
 {
+    //  PUBLIK – untuk halaman pembeli (tanpa auth)
+ 
+    // GET /api/produk-publik
+    public function indexPembeli(Request $request)
+    {
+        $query = Produk::with('kategori', 'gambarProduk');
+ 
+        // Filter kategori
+        if ($request->filled('kategori_id')) {
+            $query->where('kategori_id', $request->kategori_id);
+        }
+ 
+        // Search nama produk
+        if ($request->filled('search')) {
+            $query->where('nama_produk', 'like', '%' . $request->search . '%');
+        }
+ 
+        $produk = $query->orderBy('created_at', 'desc')->get();
+ 
+        $produk = $produk->map(fn($item) => $this->formatProdukPembeli($item));
+ 
+        return response()->json(['success' => true, 'data' => $produk]);
+    }
+ 
+    // GET /api/produk-publik/{id}
+    public function showPembeli($id)
+    {
+        $item = Produk::with('kategori', 'gambarProduk', 'penjual')->findOrFail($id);
+ 
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatProdukPembeli($item, withPenjual: true),
+        ]);
+    }
+ 
+    // GET /api/rekomendasi
+    public function rekomendasi(Request $request)
+    {
+        $tipe  = $request->get('tipe', 'terbaru');
+        $limit = (int) $request->get('limit', 8);
+        $limit = min($limit, 20);
+ 
+        $query = Produk::with('kategori', 'gambarProduk')->where('stok', '>', 0);
+ 
+        switch ($tipe) {
+            // Paling banyak terjual di kategori tertentu
+            case 'kategori':
+                if ($request->filled('kategori_id')) {
+                    $query->where('kategori_id', $request->kategori_id);
+                }
+                // Join detail_transaksi, urutkan berdasarkan total jumlah terjual
+                $query->leftJoin('detail_transaksi', 'produk.produk_id', '=', 'detail_transaksi.produk_id')
+                      ->selectRaw('produk.*, COALESCE(SUM(detail_transaksi.jumlah), 0) as total_terjual')
+                      ->groupBy('produk.produk_id')
+                      ->orderBy('total_terjual', 'desc');
+                break;
+ 
+            case 'harga_terendah':
+                $query->orderBy('harga', 'asc');
+                break;
+ 
+            case 'terbaru':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+ 
+        $produk = $query->limit($limit)->get()
+            ->map(fn($item) => $this->formatProdukPembeli($item));
+ 
+        return response()->json([
+            'success' => true,
+            'tipe'    => $tipe,
+            'data'    => $produk,
+        ]);
+    }
+ 
+    // Helper: format data produk untuk pembeli
+    private function formatProdukPembeli(Produk $item, bool $withPenjual = false): array
+    {
+        $ukuranStok = $item->ukuran_stok;
+        if (is_string($ukuranStok)) {
+            $ukuranStok = json_decode($ukuranStok, true);
+        }
+        if (!is_array($ukuranStok)) {
+            $ukuranStok = [];
+        }
+ 
+        $data = [
+            'produk_id'   => $item->produk_id,
+            'nama_produk' => $item->nama_produk ?? '',
+            'deskripsi'   => $item->deskripsi ?? '',
+            'harga'       => (int) ($item->harga ?? 0),
+            'stok'        => (int) ($item->stok ?? 0),
+            'min_stok'    => (int) ($item->min_stok ?? 10),
+            'kategori_id' => $item->kategori_id,
+            'kategori'    => $item->kategori ? $item->kategori->nama_kategori : '',
+            'ukuran_stok' => $ukuranStok,
+            'gambar'      => $item->gambarProduk->isNotEmpty()
+                                ? $item->gambarProduk->first()->gambar
+                                : '',
+            'gambar_list' => $item->gambarProduk->map(fn($g) => $g->gambar)->toArray(),
+            'size_chart'  => $item->size_chart ?? '',
+            'created_at'  => $item->created_at,
+            'updated_at'  => $item->updated_at,
+        ];
+ 
+        if ($withPenjual && $item->penjual) {
+            $data['no_wa'] = $item->penjual->no_telepon ?? '';
+            $data['nama_toko'] = $item->penjual->nama_toko ?? '';
+        }
+ 
+        return $data;
+    }
+    
     // GET /api/kategori
     public function getKategori()
     {

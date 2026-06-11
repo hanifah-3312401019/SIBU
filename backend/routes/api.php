@@ -11,6 +11,11 @@ Route::post('/login', [LoginController::class, 'login']);
 // Kategori (Public)
 Route::get('/kategori', [ProdukController::class, 'getKategori']);
 
+// Produk publik untuk pembeli (tidak perlu login)
+Route::get('/produk-publik', [ProdukController::class, 'indexPembeli']);
+Route::get('/produk-publik/{id}', [ProdukController::class, 'showPembeli']);
+Route::get('/rekomendasi', [ProdukController::class, 'rekomendasi']);
+
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout']);

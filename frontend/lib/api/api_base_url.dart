@@ -9,9 +9,10 @@ class ApiConfig {
       return "http://localhost:8000";
     }
     // Android emulator
-    if (Platform.isAndroid) {
-      return "http://10.0.2.2:8000";
-    }
+    // if (Platform.isAndroid) {
+    //  return "http://10.0.2.2:8000";
+    //}
+
     // Android physical device
     return "http://192.168.88.13:8000";
   }
@@ -28,7 +29,14 @@ class ApiBaseUrl {
   static String get me => '$baseUrl/me';
   static String get produk => '$baseUrl/produk';
   static String produkById(int id) => '$baseUrl/produk/$id';
-  
+
+  // Produk publik untuk pembeli (tanpa auth)
+  static String get produkPublik => '$baseUrl/produk-publik';
+  static String produkPublikById(int id) => '$baseUrl/produk-publik/$id';
+
+  // Rekomendasi
+  static String get rekomendasi => '$baseUrl/rekomendasi';
+
   // Kategori
   static String get kategori => '$baseUrl/kategori';
 
@@ -36,7 +44,7 @@ class ApiBaseUrl {
   static String get transaksi => '$baseUrl/transaksi';
   static String transaksiById(int id) => '$baseUrl/transaksi/$id';
   static String get riwayatTransaksi => '$baseUrl/riwayat-transaksi';
-  
+
   // Gambar produk
   static String getImageUrl(dynamic path) {
     if (path == null) return '';
