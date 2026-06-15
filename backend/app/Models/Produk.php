@@ -19,12 +19,18 @@ class Produk extends Model
         'min_stok',
         'ukuran_stok',
         'size_chart',
+        'sedang_restock',
+        'jumlah_dipesan',
+        'jumlah_per_ukuran',
     ];
     
     protected $casts = [
         'ukuran_stok' => 'array',
         'harga' => 'integer',
         'stok' => 'integer',
+        'sedang_restock' => 'boolean',
+        'jumlah_dipesan' => 'integer',
+        'jumlah_per_ukuran' => 'array',
     ];
     
     public function penjual()

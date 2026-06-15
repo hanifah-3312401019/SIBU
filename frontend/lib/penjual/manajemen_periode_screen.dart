@@ -1,8 +1,12 @@
 // lib/penjual/manajemen_periode_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/sidebar_penjual.dart';
 import 'tambah_periode_screen.dart';
+import '../api/api_base_url.dart';
 
 class ManajemenPeriodeScreen extends StatefulWidget {
   final String userName;
@@ -22,32 +26,91 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 4;
 
-  final List<Map<String, dynamic>> _periods = [
-    {
-      'id': 1,
-      'name': 'Ramadhan 2026',
-      'startDate': DateTime(2026, 2, 19),
-      'endDate': DateTime(2026, 3, 20),
-      'status': 'Aktif',
-      'statusColor': Colors.green,
-    },
-    {
-      'id': 2,
-      'name': 'Lebaran 2026',
-      'startDate': DateTime(2026, 3, 20),
-      'endDate': DateTime(2026, 3, 30),
-      'status': 'Mendatang',
-      'statusColor': Colors.orange,
-    },
-    {
-      'id': 3,
-      'name': 'Ramadhan 2025',
-      'startDate': DateTime(2025, 3, 1),
-      'endDate': DateTime(2025, 3, 30),
-      'status': 'Selesai',
-      'statusColor': Colors.grey,
-    },
-  ];
+  List<Map<String, dynamic>> _periods = [];
+  bool _isLoading = true;
+  String? _token;
+
+  String? _activePeriodeId;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('token');
+    _activePeriodeId = prefs.getString('selected_periode_id');
+    await _fetchPeriods();
+  }
+
+  Future<void> _fetchPeriods() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(ApiBaseUrl.periode),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List<Map<String, dynamic>> allPeriods =
+              List<Map<String, dynamic>>.from(data['data']);
+          final validPeriods = allPeriods
+              .where((p) =>
+                  p['tanggal_mulai'] != null && p['tanggal_selesai'] != null)
+              .toList();
+          setState(() {
+            _periods = validPeriods;
+            _isLoading = false;
+          });
+        } else {
+          setState(() => _isLoading = false);
+        }
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _aktifkanPeriode(Map<String, dynamic> periode) async {
+    final id = periode['periode_id'].toString();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selected_periode_id', id);
+    setState(() => _activePeriodeId = id);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Periode "${periode['nama_periode']}" diaktifkan. Rekomendasi stok akan menyesuaikan.'),
+        backgroundColor: const Color(0xFF803033),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _nonaktifkanPeriode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('selected_periode_id');
+    setState(() => _activePeriodeId = null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+            'Periode dinonaktifkan. Rekomendasi stok kembali ke data normal.'),
+        backgroundColor: Colors.grey.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   void _navigateToTambahPeriode() {
     Navigator.push(
@@ -58,7 +121,7 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
           userEmail: widget.userEmail,
         ),
       ),
-    );
+    ).then((_) => _fetchPeriods());
   }
 
   void _editPeriode(Map<String, dynamic> periode) {
@@ -71,36 +134,25 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
           periode: periode,
         ),
       ),
-    );
+    ).then((_) => _fetchPeriods());
   }
 
   void _deletePeriode(Map<String, dynamic> periode) {
+    final namaPeriode = periode['nama_periode'] ?? 'Periode ini';
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5ECEA),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: Color(0xFF803033),
-                  size: 32,
-                ),
+                decoration: const BoxDecoration(color: Color(0xFFF5ECEA), shape: BoxShape.circle),
+                child: const Icon(Icons.delete_outline, color: Color(0xFF803033), size: 32),
               ),
               const SizedBox(height: 16),
               Text(
@@ -113,12 +165,9 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Apakah Anda yakin ingin menghapus periode ${periode['name']}?',
+                'Apakah Anda yakin ingin menghapus periode $namaPeriode?',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: Colors.grey.shade700,
-                ),
+                style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade700),
               ),
               const SizedBox(height: 24),
               Row(
@@ -130,52 +179,55 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                         fixedSize: const Size(double.maxFinite, 41),
                         foregroundColor: const Color(0xFF803033),
                         side: const BorderSide(color: Color(0xFF803033), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text(
-                        'Batal',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _periods.remove(periode);
-                        });
+                      onPressed: () async {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Periode ${periode['name']} telah dihapus'),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                        setState(() => _isLoading = true);
+                        try {
+                          final response = await http.delete(
+                            Uri.parse(ApiBaseUrl.periodeById(periode['periode_id'])),
+                            headers: {
+                              'Authorization': 'Bearer $_token',
+                              'Accept': 'application/json',
+                            },
+                          );
+                          if (response.statusCode == 200) {
+                            // Jika yang dihapus adalah periode aktif, nonaktifkan
+                            if (_activePeriodeId == periode['periode_id'].toString()) {
+                              await _nonaktifkanPeriode();
+                            }
+                            await _fetchPeriods();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Periode $namaPeriode telah dihapus'),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } else {
+                            setState(() => _isLoading = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Gagal menghapus periode'), backgroundColor: Colors.red),
+                            );
+                          }
+                        } catch (e) {
+                          setState(() => _isLoading = false);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF803033),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 0),
                       ),
-                      child: Text(
-                        'Ya, Hapus',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: Text('Ya, Hapus', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -187,20 +239,27 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
     );
   }
 
-  String formatDate(DateTime date) {
-    return '${date.day} ${_getMonthName(date.month)} ${date.year}';
-  }
+  String formatDate(DateTime date) => '${date.day} ${_getMonthName(date.month)} ${date.year}';
 
   String _getMonthName(int month) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-    ];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     return months[month - 1];
   }
 
-  String formatDateRange(DateTime start, DateTime end) {
-    return '${formatDate(start)} → ${formatDate(end)}';
+  String formatDateRange(DateTime start, DateTime end) => '${formatDate(start)} → ${formatDate(end)}';
+
+  String getStatus(DateTime start, DateTime end) {
+    final now = DateTime.now();
+    if (now.isAfter(start) && now.isBefore(end)) return 'Aktif';
+    if (now.isBefore(start)) return 'Mendatang';
+    return 'Selesai';
+  }
+
+  Color getStatusColor(DateTime start, DateTime end) {
+    final now = DateTime.now();
+    if (now.isAfter(start) && now.isBefore(end)) return Colors.green;
+    if (now.isBefore(start)) return Colors.orange;
+    return Colors.grey;
   }
 
   @override
@@ -212,38 +271,28 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
         userName: widget.userName,
         userEmail: widget.userEmail,
         selectedIndex: _selectedIndex,
-        onItemSelected: (index) {
-          Navigator.pop(context);
-        },
+        onItemSelected: (index) => Navigator.pop(context),
       ),
       body: Stack(
         children: [
           Container(color: const Color(0xFFF5ECEA)),
-
           Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
+            top: 0, left: 0, right: 0,
             height: MediaQuery.of(context).size.height * 0.28,
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
                   end: Alignment.topRight,
-                  colors: const [
-                    Color(0xFF803033),
-                    Color(0xFFD8A5A8),
-                    Color(0xFFF5ECEA),
-                  ],
+                  colors: [Color(0xFF803033), Color(0xFFD8A5A8), Color(0xFFF5ECEA)],
                 ),
-                borderRadius: const BorderRadius.only(
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(40),
                   bottomRight: Radius.circular(40),
                 ),
               ),
             ),
           ),
-
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,23 +308,9 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                         constraints: const BoxConstraints(),
                       ),
                       const Spacer(),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.notifications_none,
-                          color: Color(0xFF803033),
-                          size: 20,
-                        ),
-                      ),
                     ],
                   ),
                 ),
-
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
@@ -283,25 +318,58 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                     children: [
                       Text(
                         'Manajemen Periode',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        style: GoogleFonts.playfairDisplay(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Data list periode',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: Colors.white70,
-                        ),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.white70),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
+
+                // Banner periode aktif saat ini 
+                if (_activePeriodeId != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF803033),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Periode aktif: ${_periods.firstWhere((p) => p['periode_id'].toString() == _activePeriodeId, orElse: () => {'nama_periode': '...'})['nama_periode']}',
+                              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _nonaktifkanPeriode,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Nonaktifkan',
+                                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 12),
 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -310,10 +378,7 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFF5ECEA),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFFD8A5A8),
-                        width: 1,
-                      ),
+                      border: Border.all(color: const Color(0xFFD8A5A8), width: 1),
                     ),
                     child: Row(
                       children: [
@@ -323,21 +388,13 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                             color: const Color(0xFFD8A5A8).withOpacity(0.3),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(
-                            Icons.info_outline,
-                            color: Color(0xFF803033),
-                            size: 20,
-                          ),
+                          child: const Icon(Icons.info_outline, color: Color(0xFF803033), size: 20),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Tetapkan periode khusus (mis. Ramadhan, Lebaran) agar rekomendasi stok menyesuaikan tren penjualan musiman.',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                              height: 1.4,
-                            ),
+                            'Aktifkan periode khusus (mis. Ramadhan, Lebaran) agar rekomendasi stok menyesuaikan tren penjualan musiman.',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
                           ),
                         ),
                       ],
@@ -345,17 +402,27 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _periods.length,
-                    itemBuilder: (context, index) {
-                      final periode = _periods[index];
-                      return _buildPeriodeCard(periode);
-                    },
-                  ),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF803033)))
+                      : _periods.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.calendar_today, size: 48, color: Colors.grey.shade400),
+                                  const SizedBox(height: 12),
+                                  Text('Belum ada periode', style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade500)),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _periods.length,
+                              itemBuilder: (context, index) => _buildPeriodeCard(_periods[index]),
+                            ),
                 ),
               ],
             ),
@@ -370,17 +437,8 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
           backgroundColor: const Color(0xFF803033),
           elevation: 0,
           icon: const Icon(Icons.add, color: Colors.white, size: 20),
-          label: const Text(
-            'Tambah Periode',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          label: const Text('Tambah Periode', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -388,12 +446,40 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
   }
 
   Widget _buildPeriodeCard(Map<String, dynamic> periode) {
+    final namaPeriode = periode['nama_periode'] ?? 'Tanpa Nama';
+    final catatan = periode['catatan'] ?? '';
+    final tanggalMulai = periode['tanggal_mulai'];
+    final tanggalSelesai = periode['tanggal_selesai'];
+
+    if (tanggalMulai == null || tanggalSelesai == null) {
+      return const SizedBox.shrink();
+    }
+
+    final startDate = DateTime.parse(tanggalMulai);
+    final endDate = DateTime.parse(tanggalSelesai);
+    final periodeIdStr = periode['periode_id'].toString();
+    
+    final isUserActive = _activePeriodeId == periodeIdStr;
+    final isDateActive = getStatus(startDate, endDate) == 'Aktif';
+    
+    String displayStatus;
+    Color displayStatusColor;
+    
+    if (isUserActive) {
+      displayStatus = 'Sedang Aktif';
+      displayStatusColor = const Color(0xFF803033);
+    } else {
+      displayStatus = getStatus(startDate, endDate);
+      displayStatusColor = getStatusColor(startDate, endDate);
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: isUserActive ? Border.all(color: const Color(0xFF803033), width: 2) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -413,83 +499,112 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5ECEA),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFFD8A5A8),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFD8A5A8), width: 1),
                 ),
-                child: const Icon(
-                  Icons.calendar_today,
-                  color: Color(0xFF803033),
-                  size: 18,
-                ),
+                child: const Icon(Icons.calendar_today, color: Color(0xFF803033), size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      periode['name'],
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF803033),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            namaPeriode,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF803033)),
+                          ),
+                        ),
+                        if (isUserActive)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF803033),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '✓ Dipilih',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      formatDateRange(
-                        periode['startDate'],
-                        periode['endDate'],
-                      ),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
+                      formatDateRange(startDate, endDate),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: periode['statusColor'].withOpacity(0.1),
+                  color: displayStatusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  periode['status'],
+                  displayStatus,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: periode['statusColor'],
+                    color: displayStatusColor,
                   ),
                 ),
               ),
             ],
           ),
-          
-          const Divider(color: Color(0xFFEEEEEE), height: 15),
-          
-          const SizedBox(height: 5),
-          
+
+          if (catatan.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(catatan, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600)),
+          ],
+
+          const Divider(color: Color(0xFFEEEEEE), height: 20),
+
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              if (!isDateActive || isUserActive)
+                Expanded(
+                  child: isUserActive
+                      ? _buildActionButton(
+                          icon: Icons.power_settings_new,
+                          label: 'Nonaktifkan',
+                          color: Colors.grey.shade600,
+                          backgroundColor: Colors.grey.shade100,
+                          borderColor: Colors.grey.shade300,
+                          onTap: _nonaktifkanPeriode,
+                        )
+                      : _buildActionButton(
+                          icon: Icons.play_circle_outline,
+                          label: 'Aktifkan',
+                          color: const Color(0xFF803033),
+                          backgroundColor: const Color(0xFFF5ECEA),
+                          borderColor: const Color(0xFF803033),
+                          onTap: () => _aktifkanPeriode(periode),
+                        ),
+                ),
+              if (!isDateActive || isUserActive) const SizedBox(width: 8),
+              
+              // Tombol Edit
               SizedBox(
-                width: 142,
+                width: 70,
                 child: _buildActionButton(
                   icon: Icons.edit_outlined,
                   label: 'Edit',
-                  color: const Color(0xFF803033),
-                  backgroundColor: const Color(0xFFF5ECEA),
-                  borderColor: const Color(0xFFF5ECEA),
+                  color: Colors.blue.shade700,
+                  backgroundColor: Colors.blue.shade50,
+                  borderColor: Colors.blue.shade100,
                   onTap: () => _editPeriode(periode),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              
+              // Tombol Hapus
               SizedBox(
-                width: 142,
+                width: 70,
                 child: _buildActionButton(
                   icon: Icons.delete_outline,
                   label: 'Hapus',
@@ -517,27 +632,20 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: borderColor,
-            width: 1,
-          ),
+          border: Border.all(color: borderColor, width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 6),
+            Icon(icon, color: color, size: 15),
+            const SizedBox(width: 5),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: color),
             ),
           ],
         ),

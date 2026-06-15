@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\ProdukController;
 use App\Http\Controllers\Api\TransaksiController;
+use App\Http\Controllers\Api\PeriodeController;
+use App\Http\Controllers\Api\RekomendasiStokController;
 
 // Auth
 Route::post('/login', [LoginController::class, 'login']);
@@ -20,6 +22,7 @@ Route::get('/rekomendasi', [ProdukController::class, 'rekomendasi']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout']);
     Route::get('/me', [LoginController::class, 'me']);
+    Route::put('/me', [LoginController::class, 'updateProfil']);
     
     // CRUD Produk
     Route::apiResource('produk', ProdukController::class);
@@ -27,4 +30,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Transaksi
     Route::apiResource('transaksi', TransaksiController::class);
     Route::get('riwayat-transaksi', [TransaksiController::class, 'index']);
+
+    // Periode
+    Route::apiResource('periode', PeriodeController::class);
+
+    // Rekomendasi Stok
+    Route::get('/rekomendasi-stok', [RekomendasiStokController::class, 'index']);
+    Route::post('/rekomendasi-stok/restock', [RekomendasiStokController::class, 'restock']);
+    Route::post('/rekomendasi-stok/konfirmasi-tiba', [RekomendasiStokController::class, 'konfirmasiTiba']);
 });

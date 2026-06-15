@@ -81,4 +81,34 @@ class LoginController extends Controller
             'data' => $request->user()
         ], 200);
     }
+
+    // PUT /api/me — update nama & no_telepon
+    public function updateProfil(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nama'       => 'required|string|max:100',
+            'no_telepon' => 'required|string|max:20',
+        ]);
+ 
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+ 
+        $user = $request->user();
+        $user->update([
+            'nama'       => $request->nama,
+            'no_telepon' => $request->no_telepon,
+        ]);
+ 
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui',
+            'data' => [
+                'nama'       => $user->nama,
+                'email'      => $user->email,
+                'no_telepon' => $user->no_telepon,
+                'nama_toko'  => $user->nama_toko,
+            ],
+        ]);
+    }
 }

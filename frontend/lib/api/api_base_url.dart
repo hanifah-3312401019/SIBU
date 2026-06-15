@@ -45,6 +45,16 @@ class ApiBaseUrl {
   static String transaksiById(int id) => '$baseUrl/transaksi/$id';
   static String get riwayatTransaksi => '$baseUrl/riwayat-transaksi';
 
+  // Periode
+  static String get periode => '$baseUrl/periode';
+  static String periodeById(int id) => '$baseUrl/periode/$id';
+
+  // Rekomendasi Stok
+  static String get rekomendasiStok => '$baseUrl/rekomendasi-stok';
+  static String get restock => '$baseUrl/rekomendasi-stok/restock';
+  static String get konfirmasiTiba =>
+      '$baseUrl/rekomendasi-stok/konfirmasi-tiba';
+
   // Gambar produk
   static String getImageUrl(dynamic path) {
     if (path == null) return '';
