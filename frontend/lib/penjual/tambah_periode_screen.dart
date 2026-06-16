@@ -25,6 +25,7 @@ class TambahPeriodeScreen extends StatefulWidget {
 class _TambahPeriodeScreenState extends State<TambahPeriodeScreen> {
   final TextEditingController _namaPeriodeController = TextEditingController();
   final TextEditingController _catatanController = TextEditingController();
+  final TextEditingController _multiplierController = TextEditingController(); // ✅ TAMBAH
 
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
@@ -32,17 +33,27 @@ class _TambahPeriodeScreenState extends State<TambahPeriodeScreen> {
   bool _isEditMode = false;
   bool _isLoading = false;
   String? _token;
+  double? _selectedMultiplier;
 
   @override
   void initState() {
     super.initState();
     _loadToken();
+    _multiplierController.text = '1.0'; 
+    _selectedMultiplier = 1.0;
+    
     if (widget.periode != null) {
       _isEditMode = true;
       _namaPeriodeController.text = widget.periode!['nama_periode'] ?? '';
       _startDate = DateTime.parse(widget.periode!['tanggal_mulai']);
       _endDate = DateTime.parse(widget.periode!['tanggal_selesai']);
       _catatanController.text = widget.periode!['catatan'] ?? '';
+      
+      final raw = widget.periode!['multiplier'];
+      final multiplierValue = (raw is double ? raw : double.tryParse(raw.toString())) ?? 1.0;
+        
+      _multiplierController.text = multiplierValue.toString();
+      _selectedMultiplier = multiplierValue;
     }
   }
 
@@ -52,76 +63,66 @@ class _TambahPeriodeScreenState extends State<TambahPeriodeScreen> {
   }
 
   Future<void> _selectStartDate(BuildContext context) async {
-  final DateTime? picked = await showDatePicker(
-    context: context,
-    initialDate: _startDate,
-    firstDate: DateTime(2020),
-    lastDate: DateTime(2030),
-    builder: (context, child) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          primaryColor: const Color(0xFF803033),  
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF803033),
-            onPrimary: Colors.white,
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2050),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            primaryColor: const Color(0xFF803033),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF803033),
+              onPrimary: Colors.white,
+            ),
+            dialogBackgroundColor: Colors.white,
           ),
-          dialogBackgroundColor: Colors.white,
-        ),
-        child: child!,
-      );
-    },
-  );
-  if (picked != null && picked != _startDate) {
-    setState(() {
-      _startDate = picked;
-      if (_endDate.isBefore(_startDate)) {
-        _endDate = _startDate.add(const Duration(days: 30));
-      }
-    });
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _startDate) {
+      setState(() {
+        _startDate = picked;
+        if (_endDate.isBefore(_startDate)) {
+          _endDate = _startDate.add(const Duration(days: 30));
+        }
+      });
+    }
   }
-}
 
-Future<void> _selectEndDate(BuildContext context) async {
-  final DateTime? picked = await showDatePicker(
-    context: context,
-    initialDate: _endDate,
-    firstDate: _startDate,
-    lastDate: DateTime(2030),
-    builder: (context, child) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          primaryColor: const Color(0xFF803033),  // Warna header
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF803033),
-            onPrimary: Colors.white,
+  Future<void> _selectEndDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate,
+      firstDate: _startDate,
+      lastDate: DateTime(2050),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            primaryColor: const Color(0xFF803033),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF803033),
+              onPrimary: Colors.white,
+            ),
+            dialogBackgroundColor: Colors.white,
           ),
-          dialogBackgroundColor: Colors.white,
-        ),
-        child: child!,
-      );
-    },
-  );
-  if (picked != null && picked != _endDate) {
-    setState(() {
-      _endDate = picked;
-    });
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _endDate) {
+      setState(() {
+        _endDate = picked;
+      });
+    }
   }
-}
 
   String formatDate(DateTime date) {
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
@@ -145,6 +146,7 @@ Future<void> _selectEndDate(BuildContext context) async {
       'tanggal_mulai': _startDate.toIso8601String().split('T')[0],
       'tanggal_selesai': _endDate.toIso8601String().split('T')[0],
       'catatan': _catatanController.text,
+      'multiplier': _multiplierController.text, 
     };
 
     try {
@@ -348,7 +350,7 @@ Future<void> _selectEndDate(BuildContext context) async {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Contoh: Ramadhan, Lebaran, dsb.',
+                    'Contoh: Ramadhan, Lebaran, Harbolnas, dll.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       color: Colors.grey.shade500,
@@ -468,6 +470,91 @@ Future<void> _selectEndDate(BuildContext context) async {
                           ),
                         ],
                       ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // MULTIPLIER DROPDOWN
+                  Text(
+                    'MULTIPLIER',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<double>(
+                        isExpanded: true,
+                        hint: Text(
+                          'Pilih Multiplier',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Color(0xFF803033),
+                        ),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                        value: _selectedMultiplier,
+                        items: const [
+                          DropdownMenuItem<double>(
+                            value: 1.0,
+                            child: Text('1.0 (Normal)'),
+                          ),
+                          DropdownMenuItem<double>(
+                            value: 1.5,
+                            child: Text('1.5'),
+                          ),
+                          DropdownMenuItem<double>(
+                            value: 2.0,
+                            child: Text('2.0'),
+                          ),
+                          DropdownMenuItem<double>(
+                            value: 2.5,
+                            child: Text('2.5'),
+                          ),
+                          DropdownMenuItem<double>(
+                            value: 3.0,
+                            child: Text('3.0'),
+                          ),
+                        ],
+                        onChanged: (double? value) {
+                          setState(() {
+                            _selectedMultiplier = value;
+                            _multiplierController.text = value?.toString() ?? '1.0';
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Multiplier akan mengalikan rekomendasi stok untuk semua produk',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      color: Colors.grey.shade500,
                     ),
                   ),
 
@@ -641,6 +728,7 @@ Future<void> _selectEndDate(BuildContext context) async {
   void dispose() {
     _namaPeriodeController.dispose();
     _catatanController.dispose();
+    _multiplierController.dispose(); 
     super.dispose();
   }
 }
