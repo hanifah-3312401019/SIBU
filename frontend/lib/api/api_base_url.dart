@@ -14,7 +14,7 @@ class ApiConfig {
     //}
 
     // Android physical device
-    return "http://192.168.88.13:8000";
+    return "http://192.168.67.88:8000";
   }
 }
 
@@ -39,6 +39,12 @@ class ApiBaseUrl {
 
   // Kategori
   static String get kategori => '$baseUrl/kategori';
+
+  // Laporan
+  static String get laporanPenjualan => '$baseUrl/laporan/penjualan';
+  static String get laporanProdukTerlaris => '$baseUrl/laporan/produk-terlaris';
+  static String get laporanPenjualanTahunan => '$baseUrl/laporan/penjualan/tahunan';
+  static String get laporanProdukTerlarisTahunan => '$baseUrl/laporan/produk-terlaris/tahunan';
 
   // Transaksi
   static String get transaksi => '$baseUrl/transaksi';

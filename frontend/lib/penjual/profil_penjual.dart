@@ -418,7 +418,7 @@ class _ProfilPenjualState extends State<ProfilPenjual> {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: Colors.black87,
+                          color: const Color.fromARGB(221, 255, 255, 255),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -426,7 +426,7 @@ class _ProfilPenjualState extends State<ProfilPenjual> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.store,
-                              size: 14, color: const Color.fromARGB(255, 56, 50, 50)),
+                              size: 14, color: Color.fromARGB(255, 255, 255, 255)),
                           const SizedBox(width: 6),
                           Text(
                             _namaButik.isNotEmpty
@@ -434,7 +434,7 @@ class _ProfilPenjualState extends State<ProfilPenjual> {
                                 : 'Admin',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
-                              color: const Color.fromARGB(255, 56, 50, 50),
+                              color: const Color.fromARGB(255, 255, 255, 255),
                               fontWeight: FontWeight.w500,
                             ),
                           ),

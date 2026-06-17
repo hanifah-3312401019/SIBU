@@ -1,8 +1,10 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'pembeli/produk_pembeli.dart';
 import 'auth/login_screen.dart';
+import 'penjual/beranda_screen.dart';
+import 'penjual/laporan_penjualan.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,6 +18,16 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Butik Syar\'i',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('id', 'ID'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('id', 'ID'),
+        Locale('en', 'US'),
+      ],
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
@@ -25,6 +37,8 @@ class MyApp extends StatelessWidget {
         '/': (context) => const SplashScreen(),
         '/produk-pembeli': (context) => const ProdukPembeli(),
         '/login': (context) => const LoginScreen(),
+        '/laporan': (context) => const LaporanPenjualan(
+        ),
       },
     );
   }

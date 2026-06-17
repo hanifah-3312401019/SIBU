@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ProdukController;
 use App\Http\Controllers\Api\TransaksiController;
 use App\Http\Controllers\Api\PeriodeController;
 use App\Http\Controllers\Api\RekomendasiStokController;
+use App\Http\Controllers\Api\LaporanController;
 
 // Auth
 Route::post('/login', [LoginController::class, 'login']);
@@ -38,4 +39,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/rekomendasi-stok', [RekomendasiStokController::class, 'index']);
     Route::post('/rekomendasi-stok/restock', [RekomendasiStokController::class, 'restock']);
     Route::post('/rekomendasi-stok/konfirmasi-tiba', [RekomendasiStokController::class, 'konfirmasiTiba']);
+
+    // Laporan
+    Route::prefix('laporan')->group(function () {
+        Route::get('/penjualan', [LaporanController::class, 'getPenjualan']);
+        Route::get('/produk-terlaris', [LaporanController::class, 'getProdukTerlaris']);
+        Route::get('/penjualan/tahunan', [LaporanController::class, 'getPenjualanTahunan']);
+        Route::get('/produk-terlaris/tahunan', [LaporanController::class, 'getProdukTerlarisTahunan']);
+    });
 });
