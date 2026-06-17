@@ -85,10 +85,11 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
     await prefs.setString('selected_periode_id', id);
     setState(() => _activePeriodeId = id);
 
+    final multiplier = periode['multiplier'] ?? 1.0;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            'Periode "${periode['nama_periode']}" diaktifkan. Rekomendasi stok akan menyesuaikan.'),
+            'Periode "${periode['nama_periode']}" diaktifkan (×$multiplier). Rekomendasi stok akan menyesuaikan.'),
         backgroundColor: const Color(0xFF803033),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -199,7 +200,6 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                             },
                           );
                           if (response.statusCode == 200) {
-                            // Jika yang dihapus adalah periode aktif, nonaktifkan
                             if (_activePeriodeId == periode['periode_id'].toString()) {
                               await _nonaktifkanPeriode();
                             }
@@ -330,7 +330,6 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Banner periode aktif saat ini 
                 if (_activePeriodeId != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -450,17 +449,19 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
     final catatan = periode['catatan'] ?? '';
     final tanggalMulai = periode['tanggal_mulai'];
     final tanggalSelesai = periode['tanggal_selesai'];
+    final multiplier = (periode['multiplier'] ?? 1.0).toDouble();
 
     if (tanggalMulai == null || tanggalSelesai == null) {
       return const SizedBox.shrink();
     }
 
-    final startDate = DateTime.parse(tanggalMulai);
-    final endDate = DateTime.parse(tanggalSelesai);
+    final startDate = DateTime.parse(tanggalMulai).toLocal();
+    final endDate = DateTime.parse(tanggalSelesai).toLocal();
     final periodeIdStr = periode['periode_id'].toString();
     
     final isUserActive = _activePeriodeId == periodeIdStr;
     final isDateActive = getStatus(startDate, endDate) == 'Aktif';
+    final status = getStatus(startDate, endDate);
     
     String displayStatus;
     Color displayStatusColor;
@@ -469,7 +470,7 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
       displayStatus = 'Sedang Aktif';
       displayStatusColor = const Color(0xFF803033);
     } else {
-      displayStatus = getStatus(startDate, endDate);
+      displayStatus = status;
       displayStatusColor = getStatusColor(startDate, endDate);
     }
 
@@ -535,6 +536,22 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
                       formatDateRange(startDate, endDate),
                       style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
                     ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5ECEA),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '× $multiplier',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF803033),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -566,29 +583,36 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
 
           Row(
             children: [
-              if (!isDateActive || isUserActive)
+              // Tombol Aktifkan 
+              if ((status == 'Mendatang' || status == 'Aktif') && !isUserActive)
                 Expanded(
-                  child: isUserActive
-                      ? _buildActionButton(
-                          icon: Icons.power_settings_new,
-                          label: 'Nonaktifkan',
-                          color: Colors.grey.shade600,
-                          backgroundColor: Colors.grey.shade100,
-                          borderColor: Colors.grey.shade300,
-                          onTap: _nonaktifkanPeriode,
-                        )
-                      : _buildActionButton(
-                          icon: Icons.play_circle_outline,
-                          label: 'Aktifkan',
-                          color: const Color(0xFF803033),
-                          backgroundColor: const Color(0xFFF5ECEA),
-                          borderColor: const Color(0xFF803033),
-                          onTap: () => _aktifkanPeriode(periode),
-                        ),
+                  child: _buildActionButton(
+                    icon: Icons.play_circle_outline,
+                    label: 'Aktifkan',
+                    color: const Color(0xFF803033),
+                    backgroundColor: const Color(0xFFF5ECEA),
+                    borderColor: const Color(0xFF803033),
+                    onTap: () => _aktifkanPeriode(periode),
+                  ),
                 ),
-              if (!isDateActive || isUserActive) const SizedBox(width: 8),
               
-              // Tombol Edit
+              // Tombol Nonaktifkan 
+              if (isUserActive)
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.power_settings_new,
+                    label: 'Nonaktifkan',
+                    color: Colors.grey.shade600,
+                    backgroundColor: Colors.grey.shade100,
+                    borderColor: Colors.grey.shade300,
+                    onTap: _nonaktifkanPeriode,
+                  ),
+                ),
+              
+              if ((status == 'Mendatang' || status == 'Aktif') && !isUserActive)
+                const SizedBox(width: 8),
+              
+              // Tombol Edit 
               SizedBox(
                 width: 70,
                 child: _buildActionButton(
@@ -602,7 +626,7 @@ class _ManajemenPeriodeScreenState extends State<ManajemenPeriodeScreen> {
               ),
               const SizedBox(width: 8),
               
-              // Tombol Hapus
+              // Tombol Hapus 
               SizedBox(
                 width: 70,
                 child: _buildActionButton(

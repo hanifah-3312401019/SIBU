@@ -14,10 +14,12 @@ class Periode extends Model
         'tanggal_mulai',
         'tanggal_selesai',
         'catatan',
+        'multiplier',
     ];
     
     protected $casts = [
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
+        'multiplier' => 'float',
     ];
 }

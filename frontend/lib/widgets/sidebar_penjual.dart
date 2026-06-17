@@ -122,11 +122,29 @@ class SidebarWidget extends StatelessWidget {
     );
   }
 
-  void _navigateToRekomendasiStok(BuildContext context) {
-    Navigator.push(
+  void _navigateToRekomendasiStok(BuildContext context) async {
+    final needRefresh = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const RekomendasiStok(),
+      ),
+    );
+
+    if (needRefresh == true) {
+      _refreshProdukScreen(context);
+    }
+  }
+
+  void _refreshProdukScreen(BuildContext context) {
+    Navigator.pop(context);
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProdukScreen(
+          userName: userName,
+          userEmail: userEmail,
+        ),
       ),
     );
   }

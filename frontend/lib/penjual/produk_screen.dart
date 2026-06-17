@@ -859,34 +859,37 @@ class _ProdukScreenState extends State<ProdukScreen> {
                                 ],
                               ),
                             )
-                          : LayoutBuilder(
-                              builder: (context, constraints) {
-                                int crossAxisCount = 2;
-                                if (constraints.maxWidth > 800) {
-                                  crossAxisCount = 3;
-                                }
-                                if (constraints.maxWidth > 1100) {
-                                  crossAxisCount = 4;
-                                }
-                                return GridView.builder(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: crossAxisCount,
-                                    crossAxisSpacing: 12,
-                                    mainAxisSpacing: 12,
-                                    childAspectRatio: 0.65,
-                                  ),
-                                  itemCount: _filteredProducts.length,
-                                  itemBuilder: (context, index) {
-                                    final product = _filteredProducts[index];
-                                    return _buildProductCard(product);
-                                  },
-                                );
-                              },
+                          : RefreshIndicator(
+                              onRefresh: _fetchProducts,  
+                              color: const Color(0xFF803033),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  int crossAxisCount = 2;
+                                  if (constraints.maxWidth > 800) {
+                                    crossAxisCount = 3;
+                                  }
+                                  if (constraints.maxWidth > 1100) {
+                                    crossAxisCount = 4;
+                                  }
+                                  return GridView.builder(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: crossAxisCount,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 12,
+                                      childAspectRatio: 0.65,
+                                    ),
+                                    itemCount: _filteredProducts.length,
+                                    itemBuilder: (context, index) {
+                                      final product = _filteredProducts[index];
+                                      return _buildProductCard(product);
+                                    },
+                                  );
+                                },
+                              ),
                             ),
                 ),
               ],
