@@ -32,6 +32,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
 
   // Filter kategori
   String _selectedCategory = 'Semua';
+  String _selectedStatus = 'Semua';
   final List<String> _categories = [
     'Semua',
     'Abaya',
@@ -40,6 +41,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
     'Khimar',
     'Bergo',
   ];
+  final List<String> _statusOptions = ['Semua', 'Stok Rendah'];
 
   // Data produk API
   List<Map<String, dynamic>> _products = [];
@@ -114,7 +116,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
     }
   }
 
-  // Navigasi
+  // ==================== NAVIGASI ====================
   void _navigateToBeranda() {
     Navigator.pushReplacement(
       context,
@@ -182,23 +184,32 @@ class _ProdukScreenState extends State<ProdukScreen> {
     }
   }
 
-  // Filter dan Pencarian
+  // ==================== FILTER ====================
   void _filterProducts(String query) {
     setState(() {
-      if (query.isEmpty && _selectedCategory == 'Semua') {
-        _filteredProducts = _products;
-      } else {
-        _filteredProducts = _products.where((product) {
-          final namaProduk = _safeString(product['nama_produk']).toLowerCase();
-          final kategori = _safeString(product['kategori']).toLowerCase();
-          final matchesSearch = query.isEmpty ||
-              namaProduk.contains(query.toLowerCase()) ||
-              kategori.contains(query.toLowerCase());
-          final matchesCategory = _selectedCategory == 'Semua' ||
-              kategori == _selectedCategory.toLowerCase();
-          return matchesSearch && matchesCategory;
-        }).toList();
-      }
+      _filteredProducts = _products.where((product) {
+        final namaProduk = _safeString(product['nama_produk']).toLowerCase();
+        final kategori = _safeString(product['kategori']).toLowerCase();
+
+        // Filter pencarian
+        final matchesSearch = query.isEmpty ||
+            namaProduk.contains(query.toLowerCase()) ||
+            kategori.contains(query.toLowerCase());
+
+        // Filter kategori
+        final matchesCategory = _selectedCategory == 'Semua' ||
+            kategori == _selectedCategory.toLowerCase();
+
+        // Filter status stok rendah
+        bool matchesStatus = true;
+        if (_selectedStatus == 'Stok Rendah') {
+          final totalStock = _getTotalStock(product);
+          final minStock = _safeInt(product['min_stok'], defaultValue: 10);
+          matchesStatus = totalStock <= minStock && totalStock > 0;
+        }
+
+        return matchesSearch && matchesCategory && matchesStatus;
+      }).toList();
     });
   }
 
@@ -266,6 +277,69 @@ class _ProdukScreenState extends State<ProdukScreen> {
     );
   }
 
+  void _showStatusFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filter Status',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF803033),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 12,
+                children: _statusOptions.map((status) {
+                  final isSelected = _selectedStatus == status;
+                  return FilterChip(
+                    label: Text(status),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedStatus = status;
+                        _filterProducts(_searchController.text);
+                      });
+                      Navigator.pop(context);
+                    },
+                    backgroundColor: Colors.grey.shade100,
+                    selectedColor: const Color(0xFF803033).withOpacity(0.2),
+                    labelStyle: GoogleFonts.plusJakartaSans(
+                      color: isSelected
+                          ? const Color(0xFF803033)
+                          : Colors.grey.shade700,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==================== HELPER ====================
   String formatPrice(int price) {
     return 'Rp ${price.toString().replaceAllMapped(
       RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
@@ -273,7 +347,6 @@ class _ProdukScreenState extends State<ProdukScreen> {
     )}';
   }
 
-  // Hitung total stok dari ukuran_stok
   int _getTotalStock(Map<String, dynamic> product) {
     final ukuranStok = _safeList(product['ukuran_stok']);
     if (ukuranStok.isNotEmpty) {
@@ -286,14 +359,13 @@ class _ProdukScreenState extends State<ProdukScreen> {
     return _safeInt(product['stok']);
   }
 
-  // Cek apakah stok rendah
   bool _isLowStock(Map<String, dynamic> product) {
     int totalStock = _getTotalStock(product);
     int minStock = _safeInt(product['min_stok'], defaultValue: 10);
     return totalStock <= minStock;
   }
 
-  // Edit & Delete
+  // ==================== EDIT & DELETE ====================
   void _editProduct(Map<String, dynamic> product) {
     Navigator.push(
       context,
@@ -463,11 +535,11 @@ class _ProdukScreenState extends State<ProdukScreen> {
     );
   }
 
+  // ==================== WIDGETS ====================
   Widget _buildProductImage(Map<String, dynamic> product) {
     final String gambar = _safeString(product['gambar']);
     final String imageUrl = ApiBaseUrl.getImageUrl(gambar);
 
-    // Debug print untuk cek URL gambar
     if (kIsWeb && imageUrl.isNotEmpty) {
       print('Loading image: $imageUrl');
     }
@@ -669,6 +741,84 @@ class _ProdukScreenState extends State<ProdukScreen> {
     );
   }
 
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final isSelected = _selectedIndex == index;
+    final opacity = isSelected ? 1.0 : 0.5;
+
+    return GestureDetector(
+      onTap: () => _onBottomNavTapped(index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(25),
+          border: isSelected
+              ? Border.all(color: Colors.grey.shade200, width: 1)
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: const Color(0xFF803033).withOpacity(opacity),
+              size: 18,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: const Color(0xFF803033).withOpacity(opacity),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildNavItem(icon: Icons.home_outlined, label: 'Beranda', index: 0),
+          _buildNavItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Produk',
+            index: 1,
+          ),
+          _buildNavItem(
+            icon: Icons.bar_chart_outlined,
+            label: 'Laporan',
+            index: 2,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -763,9 +913,9 @@ class _ProdukScreenState extends State<ProdukScreen> {
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5ECEA),
+                                color: const Color(0xFFFFFFFF),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white, width: 1),
+                                border: Border.all(color: const Color(0xFF803033), width: 1),
                               ),
                               child: TextField(
                                 controller: _searchController,
@@ -798,7 +948,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                                     borderSide: BorderSide.none,
                                   ),
                                   filled: true,
-                                  fillColor: const Color(0xFFF5ECEA),
+                                  fillColor: const Color.fromARGB(255, 255, 255, 255),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 14,
@@ -807,20 +957,42 @@ class _ProdukScreenState extends State<ProdukScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          // Tombol Filter Kategori
                           GestureDetector(
                             onTap: _showFilterDialog,
                             child: Container(
                               width: 46,
                               height: 46,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5ECEA),
+                                color: const Color.fromARGB(255, 255, 255, 255),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white, width: 1),
+                                border: Border.all(color: const Color(0xFF803033), width: 1),
                               ),
                               child: Icon(
                                 Icons.filter_list,
                                 color: const Color(0xFF803033),
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Tombol Filter Status
+                          GestureDetector(
+                            onTap: _showStatusFilterDialog,
+                            child: Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: const Color.fromARGB(255, 255, 255, 255),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFF803033), width: 1),
+                              ),
+                              child: Icon(
+                                Icons.warning_amber_rounded,
+                                color: _selectedStatus == 'Stok Rendah'
+                                    ? const Color(0xFFFFB74D)
+                                    : const Color(0xFF803033),
                                 size: 22,
                               ),
                             ),
@@ -860,7 +1032,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                               ),
                             )
                           : RefreshIndicator(
-                              onRefresh: _fetchProducts,  
+                              onRefresh: _fetchProducts,
                               color: const Color(0xFF803033),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
@@ -906,83 +1078,6 @@ class _ProdukScreenState extends State<ProdukScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildNavItem(icon: Icons.home_outlined, label: 'Beranda', index: 0),
-          _buildNavItem(
-            icon: Icons.inventory_2_outlined,
-            label: 'Produk',
-            index: 1,
-          ),
-          _buildNavItem(
-            icon: Icons.bar_chart_outlined,
-            label: 'Laporan',
-            index: 2,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required int index,
-  }) {
-    final isSelected = _selectedIndex == index;
-    final opacity = isSelected ? 1.0 : 0.5;
-
-    return GestureDetector(
-      onTap: () => _onBottomNavTapped(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(25),
-          border: isSelected
-              ? Border.all(color: Colors.grey.shade200, width: 1)
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: const Color(0xFF803033).withOpacity(opacity),
-              size: 18,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: const Color(0xFF803033).withOpacity(opacity),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

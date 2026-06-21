@@ -351,43 +351,29 @@ class _TambahProdukScreenState extends State<TambahProdukScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5ECEA),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          color: Colors.white,
-          child: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFF803033)),
-                        onPressed: () => Navigator.pop(context),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Tambah Produk',
-                        style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF803033)),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                  child: Text(
-                    'Lengkap detail produk',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF803033)),
+          onPressed: () => Navigator.pop(context),
         ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Tambah Produk',
+              style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF803033)),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Lengkap detail produk',
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        toolbarHeight: 70,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF803033)))
