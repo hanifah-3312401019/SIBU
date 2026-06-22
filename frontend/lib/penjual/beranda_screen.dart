@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'produk_screen.dart';
 import 'laporan_penjualan.dart';
 import '../api/api_base_url.dart';
+import 'notifikasi_penjual.dart';
 
 class BerandaScreen extends StatefulWidget {
   final String userName;
@@ -33,6 +34,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
   bool _isLoading = true;
   String? _token;
   String? _errorMessage;
+  int _belumDibaca = 0;
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('token');
     await Future.wait([_fetchDashboardData(), _fetchLowStockProducts()]);
+    await _fetchJumlahNotifikasi();
   }
 
   Future<void> _fetchDashboardData() async {
@@ -105,6 +108,32 @@ class _BerandaScreenState extends State<BerandaScreen> {
         _errorMessage = 'Error: ${e.toString()}';
       });
     }
+  }
+
+  Future<void> _fetchJumlahNotifikasi() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiBaseUrl.notifikasi), 
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List listNotif = data['data'] ?? [];
+          // Menghitung jumlah data notifikasi yang belum dibaca
+          final unread = listNotif.where((n) => 
+            n['sudah_dibaca'] == false || n['sudah_dibaca'] == 0 || n['sudah_dibaca'] == '0'
+          ).length;
+
+          setState(() {
+            _belumDibaca = unread;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchLowStockProducts() async {
@@ -441,14 +470,41 @@ class _BerandaScreenState extends State<BerandaScreen> {
                                     constraints: const BoxConstraints(),
                                   ),
                                   const Spacer(),
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      shape: BoxShape.circle,
+                                  Badge(
+                                    label: Text(
+                                      '$_belumDibaca',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10),
                                     ),
-                                    child: const Icon(Icons.notifications_none, color: Color(0xFF803033), size: 22),
+                                    backgroundColor: const Color(0xFF803033),
+                                    isLabelVisible: _belumDibaca > 0, 
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => NotifikasiPenjual(
+                                              userName: widget.userName,
+                                              userEmail: widget.userEmail,
+                                            ),
+                                          ),
+                                        ).then((_) {
+                                          _fetchJumlahNotifikasi();
+                                        });
+                                      },
+                                      child: Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.notifications_none,
+                                          color: Color(0xFF803033), 
+                                          size: 20,
+                                    ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

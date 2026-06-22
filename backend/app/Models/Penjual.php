@@ -19,6 +19,7 @@ class Penjual extends Authenticatable
         'kata_sandi',
         'no_telepon',
         'nama_toko',
+        'fcm_token',
     ];
 
     protected $hidden = [
@@ -28,5 +29,10 @@ class Penjual extends Authenticatable
     public function getAuthPassword()
     {
         return $this->kata_sandi;
+    }
+
+    public function notifikasi()
+    {
+        return $this->hasMany(Notifikasi::class, 'penjual_id', 'penjual_id');
     }
 }

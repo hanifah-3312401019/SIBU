@@ -9,12 +9,12 @@ class ApiConfig {
       return "http://localhost:8000";
     }
     // Android emulator
-    if (Platform.isAndroid) {
-      return "http://10.0.2.2:8000";
-    }
+    // if (Platform.isAndroid) {
+    //   return "http://10.0.2.2:8000";
+    // }
 
     // Android physical device
-    return "http://192.168.67.88:8000";
+    return "http://192.168.72.88:8000";
   }
 }
 
@@ -40,11 +40,20 @@ class ApiBaseUrl {
   // Kategori
   static String get kategori => '$baseUrl/kategori';
 
+  // Notifikasi
+  static String get notifikasi => '$baseUrl/notifikasi';
+  static String notifikasiById(String id) => '$baseUrl/notifikasi/$id/baca';
+  static String get notifikasiBacaSemua => '$baseUrl/notifikasi/baca-semua';
+  static String get notifikasiHapusSemua => '$baseUrl/notifikasi/hapus-semua';
+  static String get fcmToken => '$baseUrl/fcm-token';
+
   // Laporan
   static String get laporanPenjualan => '$baseUrl/laporan/penjualan';
   static String get laporanProdukTerlaris => '$baseUrl/laporan/produk-terlaris';
-  static String get laporanPenjualanTahunan => '$baseUrl/laporan/penjualan/tahunan';
-  static String get laporanProdukTerlarisTahunan => '$baseUrl/laporan/produk-terlaris/tahunan';
+  static String get laporanPenjualanTahunan =>
+      '$baseUrl/laporan/penjualan/tahunan';
+  static String get laporanProdukTerlarisTahunan =>
+      '$baseUrl/laporan/produk-terlaris/tahunan';
 
   // Transaksi
   static String get transaksi => '$baseUrl/transaksi';

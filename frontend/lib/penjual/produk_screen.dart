@@ -10,6 +10,7 @@ import 'tambah_produk_screen.dart';
 import 'edit_produk_screen.dart';
 import 'laporan_penjualan.dart';
 import '../api/api_base_url.dart';
+import 'notifikasi_penjual.dart';
 
 class ProdukScreen extends StatefulWidget {
   final String userName;
@@ -48,6 +49,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
   List<Map<String, dynamic>> _filteredProducts = [];
   bool _isLoading = true;
   String? _token;
+  int _belumDibaca = 0;
 
   // Helper functions
   String _safeString(dynamic value) => ApiBaseUrl.safeString(value);
@@ -71,6 +73,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('token');
     await _fetchProducts();
+    await _fetchJumlahNotifikasi();
   }
 
   Future<void> _fetchProducts() async {
@@ -114,6 +117,32 @@ class _ProdukScreenState extends State<ProdukScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _fetchJumlahNotifikasi() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiBaseUrl.notifikasi),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List listNotif = data['data'] ?? [];
+          // Menghitung jumlah data notifikasi yang belum dibaca
+          final unread = listNotif.where((n) => 
+            n['sudah_dibaca'] == false || n['sudah_dibaca'] == 0 || n['sudah_dibaca'] == '0'
+          ).length;
+
+          setState(() {
+            _belumDibaca = unread;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   // ==================== NAVIGASI ====================
@@ -870,17 +899,40 @@ class _ProdukScreenState extends State<ProdukScreen> {
                         constraints: const BoxConstraints(),
                       ),
                       const Spacer(),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
+                      Badge(
+                        label: Text(
+                          '$_belumDibaca',
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
                         ),
-                        child: const Icon(
-                          Icons.notifications_none,
-                          color: Color(0xFF803033),
-                          size: 20,
+                        backgroundColor: const Color(0xFF803033),
+                        isLabelVisible: _belumDibaca > 0, 
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => NotifikasiPenjual(
+                                  userName: widget.userName,
+                                  userEmail: widget.userEmail,
+                                ),
+                              ),
+                            ).then((_) {
+                              _fetchJumlahNotifikasi();
+                            });
+                          },
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Color(0xFF803033), 
+                              size: 20,
+                        ),
+                          ),
                         ),
                       ),
                     ],

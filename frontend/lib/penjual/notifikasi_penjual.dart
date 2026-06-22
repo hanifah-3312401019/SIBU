@@ -1,26 +1,16 @@
 // lib/penjual/notifikasi_penjual.dart
+
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../api/api_base_url.dart';
 import '../widgets/sidebar_penjual.dart';
+import 'produk_screen.dart';
 
 const _kPrimary5 = Color(0xFF7A002B);
 const _kBg5 = Color(0xFFF5ECEA);
-
-class NotifModel {
-  final String id;
-  final String judulProduk;
-  final int sisaStok;
-  final String waktu;
-  bool dibaca;
-
-  NotifModel({
-    required this.id,
-    required this.judulProduk,
-    required this.sisaStok,
-    required this.waktu,
-    this.dibaca = false,
-  });
-}
 
 class NotifikasiPenjual extends StatefulWidget {
   final String? userName;
@@ -33,66 +23,246 @@ class NotifikasiPenjual extends StatefulWidget {
 
 class _NotifikasiPenjualState extends State<NotifikasiPenjual> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  List<Map<String, dynamic>> _notifs = [];
+  bool _isLoading = true;
+  String? _token;
 
-  final List<NotifModel> _notifs = [
-    NotifModel(
-      id: '1',
-      judulProduk: 'Gamis Aisyah',
-      sisaStok: 2,
-      waktu: '5 menit lalu',
-      dibaca: false,
-    ),
-    NotifModel(
-      id: '2',
-      judulProduk: 'Hijab Pashmina Plain',
-      sisaStok: 3,
-      waktu: '1 jam lalu',
-      dibaca: false,
-    ),
-    NotifModel(
-      id: '3',
-      judulProduk: 'Bros Mutiara',
-      sisaStok: 1,
-      waktu: '3 jam lalu',
-      dibaca: false,
-    ),
-    NotifModel(
-      id: '4',
-      judulProduk: 'Gamis Maryam Hitam',
-      sisaStok: 4,
-      waktu: 'Kemarin',
-      dibaca: true,
-    ),
-    NotifModel(
-      id: '5',
-      judulProduk: 'Hijab Voal Pink',
-      sisaStok: 2,
-      waktu: '2 hari lalu',
-      dibaca: true,
-    ),
-  ];
-
-  void _tandaiSemuaDibaca() {
-    setState(() {
-      for (final n in _notifs) {
-        n.dibaca = true;
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadAndFetch();
   }
 
-  void _onTapNotif(NotifModel n) {
-    setState(() => n.dibaca = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${n.judulProduk} (Stok: ${n.sisaStok})'),
-        backgroundColor: _kPrimary5,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  Future<void> _loadAndFetch() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('token');
+    await _fetchNotifikasi();
+  }
+
+  Future<void> _fetchNotifikasi() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final res = await http.get(
+        Uri.parse(ApiBaseUrl.notifikasi),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true) {
+          setState(() {
+            _notifs = List<Map<String, dynamic>>.from(data['data']);
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _tandaiSemuaDibaca() async {
+    try {
+      final res = await http.put(
+        Uri.parse(ApiBaseUrl.notifikasiBacaSemua),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (res.statusCode == 200) {
+        await _fetchNotifikasi();
+      }
+    } catch (_) {}
+  }
+
+  /// Hapus semua notifikasi
+  Future<void> _hapusSemuaNotifikasi() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5ECEA),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_sweep_outlined,
+                  color: _kPrimary5,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Hapus Semua Notifikasi?',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: _kPrimary5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Semua riwayat notifikasi akan dihapus permanen.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _kPrimary5,
+                        side: const BorderSide(color: Color(0xFFD8A5A8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kPrimary5,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        'Ya, Hapus',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final res = await http.delete(
+        Uri.parse(ApiBaseUrl.notifikasiHapusSemua),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (res.statusCode == 200) {
+        setState(() => _notifs = []);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Semua notifikasi telah dihapus',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: _kPrimary5,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Tap notif → tandai dibaca lalu navigasi ke ProdukScreen
+  Future<void> _onTapNotif(Map<String, dynamic> notif, int index) async {
+    // Tandai dibaca dulu
+    if (notif['sudah_dibaca'] == false ||
+        notif['sudah_dibaca'] == 0 ||
+        notif['sudah_dibaca'] == '0') {
+      try {
+        final notifId = notif['notifikasi_id'].toString();
+        final res = await http.put(
+          Uri.parse(ApiBaseUrl.notifikasiById(notifId)),
+          headers: {
+            'Authorization': 'Bearer $_token',
+            'Content-Type': 'application/json',
+          },
+        );
+        if (res.statusCode == 200) {
+          setState(() {
+            _notifs[index]['sudah_dibaca'] = true;
+          });
+        }
+      } catch (_) {}
+    }
+
+    // Navigasi ke ProdukScreen
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProdukScreen(
+          userName: widget.userName ?? 'Admin Butikk',
+          userEmail: widget.userEmail ?? 'admin@butik.com',
+        ),
       ),
     );
   }
 
-  int get _belumDibaca => _notifs.where((n) => !n.dibaca).length;
+  int get _belumDibaca => _notifs
+      .where(
+        (n) =>
+            n['sudah_dibaca'] == false ||
+            n['sudah_dibaca'] == 0 ||
+            n['sudah_dibaca'] == '0',
+      )
+      .length;
+
+  String _formatWaktu(String? rawWaktu) {
+    if (rawWaktu == null) return '';
+    try {
+      final dt = DateTime.parse(rawWaktu).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
+      if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+      if (diff.inDays == 1) return 'Kemarin';
+      return '${diff.inDays} hari lalu';
+    } catch (_) {
+      return rawWaktu;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,12 +270,10 @@ class _NotifikasiPenjualState extends State<NotifikasiPenjual> {
       key: _scaffoldKey,
       backgroundColor: _kBg5,
       drawer: SidebarWidget(
-        userName: widget.userName ?? 'Ani Rani',
-        userEmail: widget.userEmail ?? 'ani@gmail.com',
+        userName: widget.userName ?? 'Admin Butikk',
+        userEmail: widget.userEmail ?? 'admin@butik.com',
         selectedIndex: 6,
-        onItemSelected: (index) {
-          Navigator.pop(context);
-        },
+        onItemSelected: (_) => Navigator.pop(context),
       ),
       body: Column(
         children: [
@@ -118,11 +286,8 @@ class _NotifikasiPenjualState extends State<NotifikasiPenjual> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                 child: Row(
                   children: [
-                    // Tombol menu untuk buka drawer
                     GestureDetector(
-                      onTap: () {
-                        _scaffoldKey.currentState?.openDrawer();
-                      },
+                      onTap: () => _scaffoldKey.currentState?.openDrawer(),
                       child: Container(
                         width: 36,
                         height: 36,
@@ -173,6 +338,28 @@ class _NotifikasiPenjualState extends State<NotifikasiPenjual> {
                         ],
                       ),
                     ),
+                    // Tombol hapus semua
+                    if (_notifs.isNotEmpty)
+                      GestureDetector(
+                        onTap: _hapusSemuaNotifikasi,
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 12),
+                          child: Icon(
+                            Icons.delete_sweep_outlined,
+                            color: Color(0xFF7A002B),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    // Tombol refresh
+                    GestureDetector(
+                      onTap: _fetchNotifikasi,
+                      child: const Icon(
+                        Icons.refresh,
+                        color: Color(0xFF7A002B),
+                        size: 22,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -199,7 +386,11 @@ class _NotifikasiPenjualState extends State<NotifikasiPenjual> {
             ),
 
           Expanded(
-            child: _notifs.isEmpty
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF7A002B)),
+                  )
+                : _notifs.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -219,96 +410,108 @@ class _NotifikasiPenjualState extends State<NotifikasiPenjual> {
                       ],
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    itemCount: _notifs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final n = _notifs[i];
-                      return GestureDetector(
-                        onTap: () => _onTapNotif(n),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: n.dibaca
-                                ? Colors.white
-                                : const Color(0xFFFDEDED),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: n.dibaca
-                                  ? Colors.transparent
-                                  : _kPrimary5.withOpacity(0.1),
+                : RefreshIndicator(
+                    onRefresh: _fetchNotifikasi,
+                    color: _kPrimary5,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      itemCount: _notifs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) {
+                        final n = _notifs[i];
+                        final dibaca =
+                            n['sudah_dibaca'] == true ||
+                            n['sudah_dibaca'] == 1 ||
+                            n['sudah_dibaca'] == '1';
+                        return GestureDetector(
+                          onTap: () => _onTapNotif(n, i),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: dibaca
+                                  ? Colors.white
+                                  : const Color(0xFFFDEDED),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: dibaca
+                                    ? Colors.transparent
+                                    : _kPrimary5.withOpacity(0.1),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: Colors.red,
-                                  size: 22,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Stok Menipis',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${n.judulProduk} tersisa ${n.sisaStok} item',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      n.waktu,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (!n.dibaca)
+                            child: Row(
+                              children: [
                                 Container(
-                                  width: 9,
-                                  height: 9,
-                                  decoration: const BoxDecoration(
-                                    color: _kPrimary5,
-                                    shape: BoxShape.circle,
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.red,
+                                    size: 22,
                                   ),
                                 ),
-                            ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        n['judul'] ?? 'Stok Menipis',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        n['pesan'] ?? '',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _formatWaktu(
+                                          n['waktu_notifikasi'] ??
+                                              n['created_at'],
+                                        ),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (!dibaca)
+                                  Container(
+                                    width: 9,
+                                    height: 9,
+                                    decoration: const BoxDecoration(
+                                      color: _kPrimary5,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],

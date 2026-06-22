@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/firebase_messaging_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'pembeli/produk_pembeli.dart';
@@ -6,7 +9,13 @@ import 'auth/login_screen.dart';
 import 'penjual/beranda_screen.dart';
 import 'penjual/laporan_penjualan.dart';
 
-void main() {
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await FirebaseMessagingService.initialize();
   runApp(const MyApp());
 }
 
@@ -16,6 +25,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Butik Syar\'i',
       debugShowCheckedModeBanner: false,
       locale: const Locale('id', 'ID'),

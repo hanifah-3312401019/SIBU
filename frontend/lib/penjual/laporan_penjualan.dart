@@ -18,6 +18,7 @@ import '../widgets/sidebar_penjual.dart';
 import 'notifikasi_penjual.dart';
 import 'beranda_screen.dart';
 import 'produk_screen.dart';
+import 'notifikasi_penjual.dart';
 
 const _kPrimary4 = Color(0xFF803033);
 const _kBg4 = Color(0xFFF5ECEA);
@@ -39,6 +40,7 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
   int? _touchedBarIndex;
   Map<String, dynamic>? _laporanData;
   List<Map<String, dynamic>> _produkTerlaris = [];
+  int _belumDibaca = 0;
 
   // ==================== GETTERS ====================
   List<int> get _intValues => (_laporanData!['values'] as List)
@@ -56,6 +58,7 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
     _token = (await SharedPreferences.getInstance()).getString('token');
     await _fetchLaporan();
     await _fetchProdukTerlaris();
+    await _fetchJumlahNotifikasi();
   }
 
   Future<void> _fetchLaporan() async {
@@ -82,6 +85,32 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
     } catch (e) {
       setState(() { _isLoading = false; _errorMessage = 'Error: ${e.toString()}'; });
     }
+  }
+
+  Future<void> _fetchJumlahNotifikasi() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiBaseUrl.notifikasi), 
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List listNotif = data['data'] ?? [];
+          // Menghitung jumlah data notifikasi yang belum dibaca
+          final unread = listNotif.where((n) => 
+            n['sudah_dibaca'] == false || n['sudah_dibaca'] == 0 || n['sudah_dibaca'] == '0'
+          ).length;
+
+          setState(() {
+            _belumDibaca = unread;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchProdukTerlaris() async {
@@ -823,15 +852,42 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
                       constraints: const BoxConstraints(),
                     ),
                     const Spacer(),
-                    GestureDetector(
-                      onTap: _navigateToNotifikasi,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                        child: const Icon(Icons.notifications_none, color: Color(0xFF803033), size: 20),
+                    Badge(
+                        label: Text(
+                          '$_belumDibaca',
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                        backgroundColor: const Color(0xFF803033),
+                        isLabelVisible: _belumDibaca > 0, 
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => NotifikasiPenjual(
+                                  userName: widget.userName,
+                                  userEmail: widget.userEmail,
+                                ),
+                              ),
+                            ).then((_) {
+                              _fetchJumlahNotifikasi();
+                            });
+                          },
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Color(0xFF803033), 
+                              size: 20,
+                        ),
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

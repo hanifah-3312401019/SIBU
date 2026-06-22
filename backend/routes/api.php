@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\TransaksiController;
 use App\Http\Controllers\Api\PeriodeController;
 use App\Http\Controllers\Api\RekomendasiStokController;
 use App\Http\Controllers\Api\LaporanController;
+use App\Http\Controllers\Api\NotifikasiController;
 
 // Auth
 Route::post('/login', [LoginController::class, 'login']);
@@ -39,6 +40,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/rekomendasi-stok', [RekomendasiStokController::class, 'index']);
     Route::post('/rekomendasi-stok/restock', [RekomendasiStokController::class, 'restock']);
     Route::post('/rekomendasi-stok/konfirmasi-tiba', [RekomendasiStokController::class, 'konfirmasiTiba']);
+
+    // Notifikasi
+    Route::get('/notifikasi', [NotifikasiController::class, 'index']);
+    Route::put('/notifikasi/{id}/baca', [NotifikasiController::class, 'tandaiBaca']);
+    Route::put('/notifikasi/baca-semua', [NotifikasiController::class, 'tandaiSemuaBaca']);
+    Route::delete('/notifikasi/hapus-semua', [NotifikasiController::class, 'hapusSemuaNotifikasi']);
+    Route::post('/fcm-token', [NotifikasiController::class, 'saveFcmToken']);
 
     // Laporan
     Route::prefix('laporan')->group(function () {

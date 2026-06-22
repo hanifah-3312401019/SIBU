@@ -25,7 +25,7 @@ class TambahPeriodeScreen extends StatefulWidget {
 class _TambahPeriodeScreenState extends State<TambahPeriodeScreen> {
   final TextEditingController _namaPeriodeController = TextEditingController();
   final TextEditingController _catatanController = TextEditingController();
-  final TextEditingController _multiplierController = TextEditingController(); // ✅ TAMBAH
+  final TextEditingController _multiplierController = TextEditingController(); 
 
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));

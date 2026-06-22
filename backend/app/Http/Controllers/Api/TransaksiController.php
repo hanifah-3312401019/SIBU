@@ -9,6 +9,8 @@ use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Models\Notifikasi;
+use App\Services\FcmService;
 
 class TransaksiController extends Controller
 {
@@ -167,6 +169,9 @@ class TransaksiController extends Controller
             }
             
             DB::commit();
+
+            //  Cek stok menipis & kirim notifikasi
+            $this->cekDanKirimNotifikasiStok($request->items, $user, new FcmService());
             
             return response()->json([
                 'success' => true,
@@ -180,6 +185,43 @@ class TransaksiController extends Controller
                     'success' => false,
                     'message' => $e->getMessage(),
             ],  400);
+        }
+    }
+
+    private function cekDanKirimNotifikasiStok(array $items, $user, FcmService $fcm): void
+    {
+        foreach ($items as $item) {
+            $produk = Produk::find($item['produk_id']);
+            if (!$produk) continue;
+
+            // Reload data terbaru setelah stok dikurangi
+            $produk->refresh();
+
+            if ($produk->stok <= $produk->min_stok) {
+                $pesan = "Stok {$produk->nama_produk} menipis! Sisa {$produk->stok} dari minimum {$produk->min_stok}.";
+
+                Notifikasi::create([
+                    'penjual_id'       => $user->penjual_id,
+                    'produk_id'        => $produk->produk_id,
+                    'pesan'            => $pesan,
+                    'sudah_dibaca'     => false,
+                    'waktu_notifikasi' => now(),
+                ]);
+
+                // Kirim FCM push (notifikasi luar app)
+                if ($user->fcm_token) {
+                    $fcm->sendToDevice(
+                        fcmToken: $user->fcm_token,
+                        title:    '⚠️ Stok Menipis',
+                        body:     $pesan,
+                        data:     [
+                            'type'      => 'stok_menipis',
+                            'produk_id' => (string) $produk->produk_id,
+                            'route'     => '/rekomendasi-stok',
+                        ]
+                    );
+                }
+            }
         }
     }
 }
