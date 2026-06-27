@@ -1,6 +1,7 @@
 // lib/widgets/sidebar_penjual.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/login_screen.dart';
 import '../penjual/produk_screen.dart';
 import '../penjual/riwayat_transaksi_screen.dart';
@@ -11,7 +12,7 @@ import '../penjual/notifikasi_penjual.dart';
 import '../penjual/rekomendasi_stok.dart';        
 import '../penjual/profil_penjual.dart';          
 
-class SidebarWidget extends StatelessWidget {
+class SidebarWidget extends StatefulWidget {
   final String userName;
   final String userEmail;
   final int selectedIndex;
@@ -24,6 +25,33 @@ class SidebarWidget extends StatelessWidget {
     required this.selectedIndex,
     required this.onItemSelected,
   });
+
+  @override
+  State<SidebarWidget> createState() => _SidebarWidgetState();
+}
+
+class _SidebarWidgetState extends State<SidebarWidget> {
+  String _nama = '';
+  String _email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _nama = prefs.getString('nama') ?? widget.userName;
+        _email = prefs.getString('email') ?? widget.userEmail;
+      });
+    }
+  }
+
+  String get userName => _nama.isNotEmpty ? _nama : widget.userName;
+  String get userEmail => _email.isNotEmpty ? _email : widget.userEmail;
 
   void _logout(BuildContext context) {
     showDialog(
@@ -324,7 +352,7 @@ class SidebarWidget extends StatelessWidget {
     required int index,
     required VoidCallback onTap,
   }) {
-    final isSelected = selectedIndex == index;
+    final isSelected = widget.selectedIndex == index;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

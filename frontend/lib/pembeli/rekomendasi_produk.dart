@@ -159,7 +159,6 @@ class _RekomendasiProdukState extends State<RekomendasiProduk> {
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const Icon(Icons.star_border, color: _kPrimary, size: 26),
                 ],
               ),
             ),

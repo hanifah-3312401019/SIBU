@@ -188,7 +188,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
   // PERIODE NAV
   void _navigateToManajemenPeriode() async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => ManajemenPeriodeScreen(
-      userName: widget.userName ?? 'Penjual', userEmail: widget.userEmail ?? '')));
+      userName: widget.userName ?? 'Admin Butikk', userEmail: widget.userEmail ?? '')));
     await _loadSelectedPeriode();
     _fetchRekomendasi();
     setState(() {});
@@ -710,7 +710,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
       key: _scaffoldKey,
       backgroundColor: _kBg6,
       drawer: SidebarWidget(
-        userName: widget.userName ?? 'Penjual',
+        userName: widget.userName ?? 'Admin Butikk',
         userEmail: widget.userEmail ?? '',
         selectedIndex: 5,
         onItemSelected: (index) => Navigator.pop(context),

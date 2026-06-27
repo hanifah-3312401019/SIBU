@@ -930,7 +930,6 @@ class _ProdukTerkaitSectionState extends State<_ProdukTerkaitSection> {
                   ),
               ],
             ),
-            Icon(Icons.chevron_right, color: Colors.grey.shade400),
           ],
         ),
       );
