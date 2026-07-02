@@ -14,7 +14,7 @@ class ApiConfig {
     // }
 
     // Android physical device
-    return "http://192.168.72.88:8000";
+    return "http://10.177.32.89:8000";
   }
 }
 

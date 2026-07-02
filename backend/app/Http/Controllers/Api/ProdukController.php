@@ -310,18 +310,35 @@ class ProdukController extends Controller
             }
         }
         
-        // Handle hapus gambar berdasarkan ID
-        if ($request->has('delete_gambar_ids')) {
-            $deleteIds = explode(',', $request->delete_gambar_ids);
-            foreach ($deleteIds as $gambarId) {
-                $gambar = GambarProduk::find($gambarId);
-                if ($gambar && $gambar->produk_id == $produk->produk_id) {
+        // Handle hapus gambar berdasarkan PATH
+        if ($request->has('delete_gambar_paths')) {
+            $deletePaths = explode(',', $request->delete_gambar_paths);
+            foreach ($deletePaths as $path) {
+                $path = trim($path);
+                if (empty($path)) continue;
+        
+                // Cari gambar berdasarkan path
+                $gambar = GambarProduk::where('produk_id', $produk->produk_id)
+                    ->where('gambar', $path)
+                    ->first();
+            
+                if ($gambar) {
                     if (Storage::disk('public')->exists($gambar->gambar)) {
                         Storage::disk('public')->delete($gambar->gambar);
                     }
                     $gambar->delete();
                 }
             }
+        }
+
+        // Update ulang urutan gambar yang tersisa
+        $remainingImages = GambarProduk::where('produk_id', $produk->produk_id)
+            ->orderBy('urutan', 'asc')
+            ->get();
+
+        foreach ($remainingImages as $index => $img) {
+            $img->urutan = $index;
+            $img->save();
         }
         
         // Update urutan gambar

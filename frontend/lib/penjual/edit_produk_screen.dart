@@ -46,7 +46,7 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
   
   // Gambar yang ada di db
   List<Map<String, dynamic>> _existingImages = [];
-  List<int> _deletedImageIds = [];
+  List<String> _deletedImagePaths = [];
 
   // Gambar Size Chart
   File? _selectedSizeChart;
@@ -86,7 +86,6 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
       final List<dynamic> gambarList = widget.produk['gambar_list'];
       for (int i = 0; i < gambarList.length; i++) {
         _existingImages.add({
-          'id': i,
           'path': gambarList[i],
           'isMain': i == 0,
         });
@@ -199,17 +198,6 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     }
   }
 
-  void _removeExistingImage(int index) {
-    setState(() {
-      final image = _existingImages[index];
-      if (image['id'] is int && image['id'] > 0) {
-        _deletedImageIds.add(image['id']);
-      }
-      _existingImages.removeAt(index);
-    });
-    _showSnackbar('Gambar dihapus', Colors.orange);
-  }
-
   void _removeNewImage(int index) {
     setState(() {
       if (kIsWeb) {
@@ -258,6 +246,21 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     _showSnackbar('Size Chart dihapus', Colors.orange);
   }
 
+  void _removeExistingImage(int index) {
+    final image = _existingImages[index];
+    if (image['path'] != null && image['path'].toString().isNotEmpty) {
+      _deletedImagePaths.add(image['path'].toString());
+    }
+    
+    setState(() {
+      _existingImages.removeAt(index);
+      if (_existingImages.isNotEmpty) {
+        _existingImages[0]['isMain'] = true;
+      }
+    });
+    _showSnackbar('Gambar dihapus (simpan untuk konfirmasi)', Colors.orange);
+  }
+
   // SIMPAN PERUBAHAN
   Future<void> _simpanPerubahan() async {
     if (!_formKey.currentState!.validate()) return;
@@ -293,8 +296,8 @@ class _EditProdukScreenState extends State<EditProdukScreen> {
     request.fields['stok'] = _sizeStockList.fold(0, (sum, item) => sum + (item['stock'] as int)).toString();
 
     // Kirim ID gambar dihapus
-    if (_deletedImageIds.isNotEmpty) {
-      request.fields['delete_gambar_ids'] = _deletedImageIds.join(',');
+    if (_deletedImagePaths.isNotEmpty) {
+      request.fields['delete_gambar_paths'] = _deletedImagePaths.join(',');
     }
 
     // Upload gambar baru
