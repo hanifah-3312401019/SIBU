@@ -9,6 +9,7 @@ use App\Models\GambarProduk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ProdukController extends Controller
 {
@@ -358,26 +359,74 @@ class ProdukController extends Controller
     }
     
     // DELETE /api/produk/{id}
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $produk = Produk::findOrFail($id);
-        
-        // Hapus semua gambar produk
-        foreach ($produk->gambarProduk as $gambar) {
-            if (Storage::disk('public')->exists($gambar->gambar)) {
-                Storage::disk('public')->delete($gambar->gambar);
+
+        // Pastikan produk yang dihapus memang milik penjual yang login
+        $user = $request->user();
+        if ($user && $produk->penjual_id !== $user->penjual_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus produk ini',
+            ], 403);
+        }
+
+        // Cek dulu apakah produk sudah pernah punya riwayat transaksi.
+        // Kalau sudah, JANGAN dihapus permanen (data laporan penjualan bisa rusak),
+        // cukup kasih tau user kenapa gagal.
+        $punyaTransaksi = \Illuminate\Support\Facades\DB::table('detail_transaksi')
+            ->where('produk_id', $id)
+            ->exists();
+
+        if ($punyaTransaksi) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Produk tidak bisa dihapus karena sudah memiliki riwayat transaksi. Gunakan opsi nonaktifkan produk jika ingin menyembunyikannya dari katalog.',
+            ], 409);
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($produk, $id) {
+                // Hapus notifikasi yang masih mereferensikan produk ini
+                \Illuminate\Support\Facades\DB::table('notifikasi')
+                    ->where('produk_id', $id)
+                    ->delete();
+
+                // Hapus file gambar dari storage SEKALIGUS row-nya di tabel gambar_produk
+                foreach ($produk->gambarProduk as $gambar) {
+                    if (Storage::disk('public')->exists($gambar->gambar)) {
+                        Storage::disk('public')->delete($gambar->gambar);
+                    }
+                    $gambar->delete();
+                }
+
+                if ($produk->size_chart && Storage::disk('public')->exists($produk->size_chart)) {
+                    Storage::disk('public')->delete($produk->size_chart);
+                }
+
+                $produk->delete();
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Produk berhasil dihapus'
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Error 23000 = foreign key constraint violation (masih ada tabel lain yang belum ditangani)
+            if ($e->getCode() == 23000) {
+                \Log::warning('Gagal hapus produk (FK constraint) ID ' . $id . ': ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Produk tidak bisa dihapus karena masih memiliki data terkait lainnya.',
+                ], 409);
             }
+
+            \Log::error('Gagal hapus produk ID ' . $id . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus produk',
+            ], 500);
         }
-        
-        if ($produk->size_chart && Storage::disk('public')->exists($produk->size_chart)) {
-            Storage::disk('public')->delete($produk->size_chart);
-        }
-        
-        $produk->delete();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Produk berhasil dihapus'
-        ]);
     }
 }

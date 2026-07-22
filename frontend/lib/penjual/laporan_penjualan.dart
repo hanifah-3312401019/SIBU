@@ -511,10 +511,10 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Export Laporan',
+          Text('Ekspor Laporan',
               style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: _kPrimary4)),
           const SizedBox(height: 6),
-          Text('Pilih format export yang diinginkan',
+          Text('Pilih format ekspor yang diinginkan',
               style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500)),
           const SizedBox(height: 20),
           Row(children: [
@@ -546,10 +546,10 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Export Laporan Tahunan ${_selectedDate.year}',
+          Text('Ekspor Laporan Tahunan ${_selectedDate.year}',
               style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: _kPrimary4)),
           const SizedBox(height: 6),
-          Text('Export semua bulan dalam setahun',
+          Text('Ekspor semua bulan dalam setahun',
               style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500)),
           const SizedBox(height: 20),
           Row(children: [
@@ -1160,7 +1160,7 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
                                       child: ElevatedButton.icon(
                                         onPressed: _showExportSheet,
                                         icon: const Icon(Icons.download, color: Colors.white, size: 18),
-                                        label: Text('Export Laporan (PDF / Excel)',
+                                        label: Text('Ekspor Laporan (PDF / Excel)',
                                             style: GoogleFonts.plusJakartaSans(
                                                 color: Colors.white, fontWeight: FontWeight.w700)),
                                         style: ElevatedButton.styleFrom(
@@ -1181,7 +1181,7 @@ class _LaporanPenjualanState extends State<LaporanPenjualan> {
                                           onPressed: _showTahunanSheet,
                                           icon: const Icon(Icons.calendar_month, color: _kPrimary4, size: 18),
                                           label: Text(
-                                            'Export Laporan Tahunan ${_selectedDate.year} (PDF / Excel)',
+                                            'Ekspor Laporan Tahunan ${_selectedDate.year} (PDF / Excel)',
                                             style: GoogleFonts.plusJakartaSans(
                                                 color: _kPrimary4, fontWeight: FontWeight.w700),
                                           ),

@@ -404,7 +404,7 @@ class _RiwayatTransaksiScreenState extends State<RiwayatTransaksiScreen> {
                           onChanged: (value) => setState(() => _searchQuery = value),
                           style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.black87),
                           decoration: InputDecoration(
-                            hintText: 'Cari invoice...',
+                            hintText: 'Cari riwayat transaksi...',
                             hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey.shade500, fontSize: 14),
                             prefixIcon: Icon(Icons.search, color: Colors.grey.shade500, size: 22),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

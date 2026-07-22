@@ -168,7 +168,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
           if (status == 'Sedang Dipesan') chipColor = Colors.orange.shade50;
           return FilterChip(
             label: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (status == 'Perlu Restock') const Text('🔴 ', style: TextStyle(fontSize: 14)),
+              if (status == 'Perlu Restok') const Text('🔴 ', style: TextStyle(fontSize: 14)),
               if (status == 'Sedang Dipesan') const Text('🟡 ', style: TextStyle(fontSize: 14)),
               Text(status),
             ]),
@@ -450,7 +450,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text('Reset ke Default', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimary6)),
+                        child: Text('Atur Ulang', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimary6)),
                       )),
                       const SizedBox(width: 12),
                       Expanded(child: ElevatedButton(
@@ -475,7 +475,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                               body: json.encode({'produk_id': produkId, 'jumlah': totalJumlah, 'jumlah_per_ukuran': finalPerUkuran}),
                             );
                             if (response.statusCode == 200) { _snack('Restock ${item['nama']} ($totalJumlah pcs) berhasil dicatat'); _fetchRekomendasi(); }
-                            else _snack('Gagal mencatat restock');
+                            else _snack('Gagal mencatat restok');
                           } catch (e) { _snack('Error: ${e.toString()}'); }
                         },
                         style: ElevatedButton.styleFrom(
@@ -484,7 +484,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           elevation: 0,
                         ),
-                        child: Text('Pesan Restock', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                        child: Text('Pesan Restok', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                       )),
                     ]),
                     const SizedBox(height: 24),
@@ -695,7 +695,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Text('🔴', style: TextStyle(fontSize: 14)), const SizedBox(width: 6),
-              Text('Restock Sekarang', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700)),
+              Text('Restok Sekarang', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700)),
             ]),
           ),
         );
@@ -901,7 +901,7 @@ class _RekomendasiStokState extends State<RekomendasiStok> {
                             child: Center(child: Column(children: [
                               Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
                               const SizedBox(height: 12),
-                              Text('Tidak ada produk yang perlu direstock', style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade500)),
+                              Text('Tidak ada produk yang perlu direstok', style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade500)),
                             ])),
                           )
                         else

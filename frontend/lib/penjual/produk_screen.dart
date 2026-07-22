@@ -506,33 +506,35 @@ class _ProdukScreenState extends State<ProdukScreen> {
                                 'Accept': 'application/json',
                               },
                             );
+                            final resBody = response.body.isNotEmpty
+                                ? json.decode(response.body)
+                                : {};
+
+                            setState(() => _isLoading = false);
+
                             if (response.statusCode == 200) {
                               await _fetchProducts();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
+                              _showResultDialog(
+                                success: true,
+                                message:
                                     '${_safeString(product['nama_produk'])} telah dihapus',
-                                  ),
-                                  backgroundColor: Colors.green,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
                               );
                             } else {
-                              setState(() => _isLoading = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Gagal menghapus produk'),
-                                  backgroundColor: Colors.red,
-                                ),
+                              final pesanError = _safeString(
+                                resBody['message'],
+                              ).isNotEmpty
+                                  ? _safeString(resBody['message'])
+                                  : 'Gagal menghapus produk';
+                              _showResultDialog(
+                                success: false,
+                                message: pesanError,
                               );
                             }
                           } catch (e) {
                             setState(() => _isLoading = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: ${e.toString()}'),
-                                backgroundColor: Colors.red,
-                              ),
+                            _showResultDialog(
+                              success: false,
+                              message: 'Error: ${e.toString()}',
                             );
                           }
                         },
@@ -556,6 +558,93 @@ class _ProdukScreenState extends State<ProdukScreen> {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Popup hasil aksi (sukses/gagal) — gaya konsisten dengan dialog konfirmasi
+  void _showResultDialog({required bool success, required String message}) {
+    final Color mainColor =
+        success ? const Color(0xFF2E7D32) : const Color(0xFF803033);
+    final Color bgIconColor =
+        success ? const Color(0xFFE8F5E9) : const Color(0xFFF5ECEA);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: bgIconColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  success ? Icons.check_circle_outline : Icons.error_outline,
+                  color: mainColor,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                success ? 'Berhasil!' : 'Gagal',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: mainColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: mainColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'OK',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
