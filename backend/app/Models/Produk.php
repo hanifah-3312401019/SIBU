@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Produk extends Model
 {
+    use HasFactory;
     protected $table = 'produk';
     protected $primaryKey = 'produk_id';
     
@@ -52,7 +54,7 @@ class Produk extends Model
     // Gambar utama (urutan pertama)
     public function getGambarUtamaAttribute()
     {
-        $gambar = $this->gambarProduk()->first();
+        $gambar = $this->gambarProduk->first();
         return $gambar ? $gambar->gambar : null;
     }
     
